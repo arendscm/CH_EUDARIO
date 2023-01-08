@@ -1,30 +1,79 @@
 ---
-title: "cfDNA_exploratory"
+title: "cfDNA exploratory analysis"
 author: "arendscm"
 date: "8 1 2023"
-output: html_document
+output: html_notebook
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+library(base)
+library(dplyr)
+library(stringr)
+library(reshape)
+library(tidyr)
+library(reshape2)
+library(ggplot2)
+library(ggthemes)
+library(viridis)
+library(reshape)
+library(ggpubr)
+
 ```
 
 ## R Markdown
+This is to explore relations between cfDNA and WB DNA mutations
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r warning = FALSE, echo=FALSE}
+variables <- c("Patient.ID","Sample_orig","cf","mutID","position","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "GeneDetail", "ExonicFunc", "AAChange", "cytoBand","readDepth", "TR1", "TR1_plus", "TR1_minus", "TR2", "TR2_plus", "TR2_minus", "TVAF", "AF", "avsnp150", "cosmic92_coding","snp","mutFreq")
+ch_genes <- c("DNMT3A","TET2","ASXL1","PPM1D","CBL","CEBPA","GNB1","GNAS","IDH1","IDH2","JAK2","SF3B1","SRSF2","U2AF1;U2AF1L5")
+tp53_genes <- c("TP53")
+brca_genes <- c("BRCA1","BRCA2")
+hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3")
 
-```{r cars}
-summary(cars)
+#data frame with mutation calls from cfDNA             
+df %>% 
+  filter(cf==1) %>% 
+  dplyr::select(variables,p.binom) %>%
+  mutate(cfID=paste(Patient.ID,position))-> df.cf
+#data frame with mutation calls from WB samples that have matched cfDNA samples
+df %>% 
+  filter(is.element(Sample,df.cf$Sample)) %>% 
+  filter(cf==0) %>% 
+  dplyr::select(variables,p.binom) %>%
+  mutate(cfID=paste(Patient.ID,position)) -> df.cf_wb
+
+##identity check via SNPs
+left_join(df.cf,df.cf_wb,by="cfID") %>% 
+  filter(snp.x == 1) %>% 
+  ggplot(aes(x=Sample.x,y=TVAF.x-TVAF.y)) +
+  geom_point()
+
+mismatch <- c("2-E2","2-E8","2-H8","2-A7")
+
+
 ```
 
-## Including Plots
+## Correlation plot
+This is a correlation plot of WB VAF and cfVAF
 
-You can also embed plots, for example:
+```{r, echo=FALSE, warning=FALSE}
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+full_join(df.cf,df.cf_wb,by="cfID") %>% 
+  filter(!is.element(Sample.x,mismatch))%>% 
+  ggscatter(., 
+            x = "TVAF.x", 
+            y = "TVAF.y", 
+            add = "reg.line", 
+            #conf.int = TRUE, 
+            cor.coef = TRUE, 
+            cor.method = "pearson",
+            size=1,
+            xlab = "VAF whole blood", 
+            ylab = "VAF plasma")->p.cfDNACor
+p.cfDNACor
 ```
+
+
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
