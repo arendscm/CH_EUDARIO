@@ -57,7 +57,7 @@ mismatch <- c("2-E2","2-E8","2-H8","2-A7")
 ## Correlation plot
 This is a correlation plot of WB VAF and cfVAF
 
-```{r, echo=FALSE, warning=FALSE}
+```{r, warning=FALSE}
 
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
   filter(!is.element(Sample.x,mismatch))%>% 
