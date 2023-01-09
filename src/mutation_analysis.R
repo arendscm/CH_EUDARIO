@@ -10,7 +10,7 @@
 # Output: Excel list of filtered results, plots, ...
 #
 # ==============================================================================
-########   Dependencies   #####
+########   Dependencies   ####
 library(base)
 library(dplyr)
 library(stringr)
