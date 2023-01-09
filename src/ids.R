@@ -8,9 +8,9 @@ library(reshape2)
 library(stringr)
 
 ##Patient ID table that identifies Sample IDs with Patient ID and timepoints
-ids2 <- read_excel("data/external/Ovarial-Ca_LibPrep.xlsx", 
+ids <- read_excel("data/external/Ovarial-Ca_LibPrep.xlsx", 
                   sheet = "PatIDfix")
-ids2 %>% filter(!is.na(Patient.ID)) -> ids 
+ids %>% filter(!is.na(Patient.ID)) -> ids 
 
 #internal Sample IDs
 Sample_IDs <- read_excel("data/external/Sample Registry.xlsx", 
