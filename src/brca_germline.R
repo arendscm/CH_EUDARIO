@@ -3,22 +3,18 @@
 #
 # Author: Max & Klara
 #
-# Description: from variantcalls to excel list of filtered results and analysis
+# Description: Defines BRCA Germline Mutations (BRCA/HRD and their IDs)
 #
-# Input: variantcalls as csv file
+# Input: seqdata
 #
-# Output: Excel list of filtered results, plots, ...
+# Output: df.brca_germline and BRCA germline IDs/ df.hrd_germline
 #
 # ==============================================================================
 ########   Dependencies   #####
-library(base)
 library(dplyr)
-library(xlsx)
-library(stringr)
+library(base)
 library(reshape)
 library(tidyr)
-library(readxl)
-library(reshape2)
 
 
 ########   set working directory #####
@@ -71,3 +67,4 @@ rm(df)
 rm(ids)
 
 save.image("data/interim/brca.RData")
+

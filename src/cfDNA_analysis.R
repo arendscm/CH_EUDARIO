@@ -20,7 +20,6 @@ library(reshape2)
 library(ggplot2)
 library(ggthemes)
 library(viridis)
-library(reshape)
 library(ggpubr)
 
 
@@ -171,6 +170,8 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   theme_minimal()
 
 ########   BRCA and CH Status ####
+##gehört hier eigentlich nicht hin zu cf Analysis...
+#Ich denke wir sollten das in ein neuse Skript machen, was später durch TableOne ersetzt/erweitert wird
 #Create table with BRCA and CH Status
 for (id in ID)
 {#####CH status

@@ -5,9 +5,9 @@
 #
 # Description: Analysis of longitudinal data
 #
-# Input: df from data/interim/seqdata.RData
+# Input: seqdata, seqdata_filtered
 #
-# Output: Excel list of filtered results, plots, ...
+# Output: ...
 #
 # ==============================================================================
 ########   Dependencies   #####
@@ -165,6 +165,7 @@ df.eot_rel %>%
   scale_y_log10() +
   labs(x="Gene",y="log(VAF change)",colour="Mutated Gene") +
   theme_graphicalabstract()-> p.serial
+#hier stimmt was noch nicht, im plot ist eine lila linie vertikal bei relvaf2
 
 df.eot_rel %>% 
   filter(variable == "relvaf2") %>% 
@@ -197,3 +198,6 @@ df.eot_rel %>%
 png("output/figures/growth.png",width=6, height=4,units="in",res=500,type="cairo")
 p.growth
 dev.off()
+
+
+rm(list=ls())

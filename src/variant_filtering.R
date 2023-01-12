@@ -3,11 +3,11 @@
 #
 # Author: Max & Klara
 #
-# Description: from variantcalls to excel list of filtered results and analysis
+# Description: from variantcalls to excel list of filtered results
 #
-# Input: variantcalls as csv file
+# Input: seqdata
 #
-# Output: Excel list of filtered results, plots, ...
+# Output: Excel list of filtered results
 #
 # ==============================================================================
 ########   Dependencies   #####
@@ -97,14 +97,14 @@ inner_join(mutID.func,mutID.count) %>%
 
 df.filtered %>% filter(Visite == "C1D1") -> df.filtered.c1d1
 
-rm(mutID.CHIP)
-rm(mutID.CHIP.qual)
-rm(mutID.count)
-rm(mutID.freq)
-rm(mutID.func)
-rm(mutID.hotspots)
-rm(mutID.qual)
-rm(ids)
+rm(mutID.CHIP)+
+rm(mutID.CHIP.qual)+
+rm(mutID.count)+
+rm(mutID.freq)+
+rm(mutID.func)+
+rm(mutID.hotspots)+
+rm(mutID.qual)+
+rm(ids)+
 rm(df)
 
 save.image("data/interim/seqdata_filtered.RData")

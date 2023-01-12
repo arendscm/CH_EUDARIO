@@ -3,27 +3,17 @@
 #
 # Author: Max & Klara
 #
-# Description: from variantcalls to excel list of filtered results and analysis
+# Description: creates table of all samples (Patient, timepoints...) 
+#              creates tables with sample IDs ( external and internal ones)
 #
-# Input: variantcalls as csv file
+# Input: external data folder
 #
-# Output: Excel list of filtered results, plots, ...
+# Output: table of samples and sample IDs
 #
 # ==============================================================================
 ########   Dependencies   #####
-library(base)+
-library(dplyr)+
-library(ggplot2)+
-library(xlsx)+
-library(stringr)+
-library(ggthemes)+
-library(viridis)+
-library(reshape)+
-library(ggpubr)+
-library(g3viz)+
-library(tidyr)+
-library(readxl)+
-library(reshape2)
+library (readxl)
+library (dplyr)
 
 ########   set working directory #####
 #setwd('H:/Meine Ablage')
@@ -61,14 +51,17 @@ rm(cfEOT)
 rm(EOT)
 rm(pool)
 rm(list)
+rm(Ovarial_Ca_LibPrep)
 
 
 #combine Ext and Int PatID
 #komb aus Extraction Plan 
-komb <- read_excel("data/external/DNA Extraction Plan.xlsx", 
-                   sheet = "Kombinieren")
+komb <- read_excel("data/external/Sample Registry.xlsx", 
+                   sheet = "Kombinieren", col_types = c("text", 
+                                                        "text", "text", "text"))
 #IntExt aus sample registry
-IntExt <- read.csv("data/interim/sample_registry.csv")
+IntExt <- read_excel("data/external/Sample Registry.xlsx", 
+                     sheet = "Sample IDs")
 left_join(komb,IntExt, by='External Pat ID')->komb2
 
 filename="Sample Registry/IntExtPatID.xlsx"
@@ -76,3 +69,5 @@ filename="Sample Registry/IntExtPatID.xlsx"
 rm(komb2)
 rm(IntExt)
 rm(komb)
+rm(filename)
+

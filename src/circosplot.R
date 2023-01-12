@@ -1,3 +1,16 @@
+# ==============================================================================
+# Ovarian Cancer filtering Script
+#
+# Author: Max & Klara
+#
+# Description: creates txt. file for circoplot online tool
+#
+# Input: filtered results
+#
+# Output: txt file 
+#
+# ==============================================================================
+########   Dependencies   #####
 library(base)
 library(dplyr)
 library(stringr)
@@ -133,8 +146,12 @@ write.table(finaltable, file = "output/Circleplot.txt", sep = " ",
             row.names = FALSE, col.names = FALSE)
 
 rm(backup)+
+  rm(geneID)+
+  rm(genes2)+
+  rm(filename)+
   rm(genesx)+
   rm(tab)+
+  rm(tab2)+
   rm(tab3)+
   rm(tab4)+
   rm(finaltable)+
@@ -151,3 +168,4 @@ rm(backup)+
   rm(Col1)+
   genes2->genes+
   rm(genes2)
+

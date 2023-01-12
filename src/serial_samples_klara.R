@@ -32,6 +32,7 @@ library(maftools)
 ########  Load preprocessed sequencing data
 #df <- read.csv('data/interim/mutationcalls.csv')
 load('data/interim/seqdata.RData')
+load('data/interim/seqdata_filtered.RDATA')
 
 ######## Get Patient ids
 source("src/ids.R")
@@ -142,7 +143,8 @@ filename="C1D1EOT/Dynamicallpatients.xlsx"
 #write.xlsx(Dynamicallpat,filename, sheetName = "Dynamic",append=TRUE)
 
 #Create Dynamic plots for each EOT ID
-#setwd to where images should be saved to!
+#setwd to where images should be saved to!Muss noch ggeändert werdem, 
+#sodass die plots in figures landen...
 setwd("H:/Meine Ablage/C1D1EOT/Dynamicplot")
 for (current_patient in EOT_ids)
 {print(current_patient)
@@ -169,9 +171,4 @@ for (current_patient in EOT_ids)
   dev.off()
 }
 
-rm(p.C1D1EOTdynamicpat1)+
-  rm(current_patient)+
-  rm(EOT_ids)+
-  rm(Dynamic)+
-  rm(Dynamicallpat)
-rm(filename)
+rm(list=ls())

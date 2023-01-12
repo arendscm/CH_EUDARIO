@@ -147,15 +147,4 @@ for (patient_id in patient_ids) {
 # View the results
 germline_comparison
 
-rm(patient_id)+
-rm(patient_ids)+
-rm(patient_samples)+
-rm(sample_1)+
-rm(sample_2)+
-rm(i)+
-rm(j)+
-rm(intersection)+
-rm(overlap_percentage)+
-rm(sample_ids)
-  
-
+rm(list=ls())
