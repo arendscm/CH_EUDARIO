@@ -38,17 +38,17 @@ df %>%
   filter(avsnp150!=".")%>%
   filter(FisherScore>1)%>%
   filter(AF >= 0.3)-> df.snp
+##Preparation for Heatmap
+df.snp%>%
+  mutate(PatSample = paste(Patient.ID,Sample,Visite,sep="_"))->df.snp
 
 ########   SNP-Comparison -> Heatmap ####
-
 QC_germline<-read.table(file = 'QC/Total_result.txt', sep = '\t', header = FALSE)
 names(QC_germline) <- c("Sample1","Sample2","Score", "MatchingStatus")
 filename="QC/QC_germline.xlsx"
 #write.xlsx(QC_germline,filename, sheetName="QC", append=TRUE)
 
-##Preparation for Heatmap
-df.snp%>%
-  mutate(PatSample = paste(Patient.ID,Sample,Visite,sep="_"))->df.snp
+
 ##rescue matching germline Mutations
 select(df.snp,Patmut)->b
 b=unlist(b)
@@ -59,12 +59,13 @@ for (Mut in b)
   bind_rows(df.snp,a)->df.snp
   unique(df.snp)->df.snp}
 #oder?
-select(df.snp,Patmut)->q
 semi_join(df, df.snp, by="Patmut")->df.snp
 
-q->df.snp
-rm(q)
-#speichern als backup
+rm(b)
+rm(a)
+rm(Mut)
+
+#speichern als backup nur bei loop, da das ewig dauert!
 df.snp->df.snpbackup
 
 df.snp%>%
@@ -87,7 +88,7 @@ dst <- data.matrix(dst)
 
 ### plotting
 dim <- ncol(dst)
-pdf(file="QC/Distanz.pdf",height=35,width=45)
+pdf(file="output/qc/Distanz.pdf",height=35,width=45)
 image(1:dim, 1:dim, dst, axes = FALSE, xlab="", ylab="")
 axis(1, 1:dim, rownames(dst), cex.axis = 0.5, las=3)
 axis(2, 1:dim, rownames(dst), cex.axis = 0.5, las=1)
@@ -96,12 +97,13 @@ text(expand.grid(1:dim, 1:dim), sprintf("%1i", dst) , cex=0.6)
 dev.off()
 
 #write newdata in excelfile
-filename="QC/Distanz.xlsx"
-write.xlsx(newdata,filename,sheetName=" ",append=TRUE)
+filename="output/qc/Distanz.xlsx"
+write.xlsx(newdata,filename,sheetName="Distanz",append=TRUE)
 
 rm(newdata)
 rm(dim)
 rm(dst)
+rm(filename)
 
 ##comparison germline:
 # Get the unique patient IDs
@@ -146,5 +148,8 @@ for (patient_id in patient_ids) {
 
 # View the results
 germline_comparison
+
+filename="output/qc/Distanz.xlsx"
+write.xlsx(germline_comparison,filename,sheetName="germline comparison",append=TRUE)
 
 rm(list=ls())
