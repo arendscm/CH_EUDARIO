@@ -5,7 +5,7 @@
 #
 # Description: creates overview table of all patients
 #
-# Input: seqdata, filtered data, BRCA Status
+# Input: seqdata, filtered data, BRCA Status, il6snp status
 #
 # Output: Overview table
 # ==============================================================================
@@ -41,6 +41,7 @@ Table <- Patient.ID %>%
   rename(Patient.ID == "Patient.ID") %>%
   mutate(CH = 0, il6snp = 0)
 
+##CH genes
 # Add columns for each gene, with initial values of 0
   for (gene in ch_genes) {
     Table[gene] <- 0
@@ -59,6 +60,20 @@ Table <- Patient.ID %>%
 
 Table[is.na(Table)] <- 0
 
+# Create a new column called "Mutation_comb"
+Table$Mutation_comb <- ""
+
+# For each patient, find the genes they have mutations in and concatenate them together with "+"
+for (i in 1:nrow(Table)) {
+  patient_genes <- c()
+  for (gene in ch_genes) {
+    if (Table[i, gene] > 0) {
+      patient_genes <- c(patient_genes, gene)
+    }
+  }
+  Table[i, "Mutation_comb"] <- str_c(patient_genes, collapse = "+")
+}
+
 #il6snp
 left_join(Table,id.il6, by="Patient.ID")->Table
 #BRCA_germine
@@ -66,11 +81,15 @@ left_join(Table,id.brca_germline, by="Patient.ID")->Table
 
 #ids
 ids%>%
-  filter(Visite == "C1D1")->ids_C1D1
+  filter(Visite == "C1D1")%>%
+  select(.,Patient.ID,`Internal Pat ID`)->ids_C1D1
 left_join(Table, ids_C1D1,by="Patient.ID")->Table
+
+
 
 filename="output/Overview_Table.xlsx"
 write.xlsx(Table, filename, sheetName="Overview", append=TRUE)
+save(Table,file="data/interim/Overview_Table.RDATA")
 
 rm(list = ls())
 
