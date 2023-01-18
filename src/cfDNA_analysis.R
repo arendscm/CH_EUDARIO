@@ -50,8 +50,18 @@ hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM17
 #data frame with mutation calls from cfDNA             
 df %>% 
   filter(cf==1) %>% 
+  filter(Visite == "C1D1")%>%
   dplyr::select(variables,p.binom) %>%
   mutate(cfID=paste(Patient.ID,position))-> df.cf
+df %>% 
+  filter(cf==0) %>% 
+  filter(Visite == "C1D1")%>%
+  dplyr::select(variables,p.binom) %>%
+  mutate(cfID=paste(Patient.ID,position))-> df.wb
+
+anti_join(df.cf, df.wb, by= "cfID")->df.cf_only
+save(df.cf_only,file="data/interim/df.cf_only.RDATA")
+
 #data frame with mutation calls from WB samples that have matched cfDNA samples
 df %>% 
   filter(is.element(Sample,df.cf$Sample)) %>% 
