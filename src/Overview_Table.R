@@ -45,7 +45,8 @@ Patresults%>%
 #Create a new dataframe with patient IDs as the first column
 Table <- Patient.ID %>%
   rename(Patient.ID == "Patient.ID") %>%
-  mutate(CH = 0, `VAF >10%` = 0, `VAF >5%` = 0, `VAF >2%` = 0, `only cf-TP53`=0)
+  mutate(CH = 0, `VAF >10%` = 0, `VAF >5%` = 0, `VAF >2%` = 0, `only cf-TP53`=0,
+         `Mutation_comb+VAF`= NA)
 ##CH genes ->list of ch_genes
 # Add columns for each gene, with initial values of 0
   for (gene in ch_genes) {
@@ -106,18 +107,20 @@ Table[is.na(Table)] <- 0
 
 genes_total <- c(ch_genes,hrd_genes)
 
-# Create a new column called "Mutation_comb"
-Table$Mutation_comb <- ""
-
-# For each patient, find the genes they have mutations in and concatenate them together with "+"
-for (i in 1:nrow(Table)) {
-  patient_genes <- c()
-  for (gene in genes_total) {
-    if (Table[i, gene] > 0) {
-      patient_genes <- c(patient_genes, gene)
-    }
+##Mutation comb with VAF
+for (patient_id in ID) {
+  # only Patient ID results
+  patient_mutations <- subset(Patresults, Patresults$Patient.ID == patient_id)
+  
+  patient_mutations_vaf <- character(nrow(patient_mutations))
+  for (i in 1:nrow(patient_mutations)){
+    patient_mutations_vaf[i] <- paste0(patient_mutations$Gene[i], " (",patient_mutations$TVAF[i],")")
   }
-  Table[i, "Mutation_comb"] <- str_c(patient_genes, collapse = "+")
+  # Check if the patient has a mutation
+  if (nrow(patient_mutations) > 0) {
+    # If the patient has a mutation -> mutation names and VAF
+    Table$`Mutation_comb+VAF`[Table$Patient.ID == patient_id] <- paste(patient_mutations_vaf, collapse = " + ")
+  }
 }
 
 #il6snp
