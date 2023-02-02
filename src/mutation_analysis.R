@@ -943,3 +943,90 @@ g3Lollipop(df.lolli%>%filter(Hugo_Symbol=="BRCA2"),
            save.png.btn	= FALSE,
            save.svg.btn = FALSE,
            output.filename = "cbioportal_theme")
+
+##Rose Chart
+# Create dataset
+df.filtered.c1d1%>%
+  filter(tag== "true")%>%
+  filter(TVAF >= 0.01)%>%
+  select(.,mutID,Gene,TVAF)%>%
+  filter(is.element(Gene,c("CHEK2","PPM1D","DNMT3A","TP53","TET2","ATM")))->data
+#data = data %>% arrange(Gene, TVAF)
+#orders mutID acording to TVAF in each Gene group
+
+genes <-c("PPM1D","DNMT3A","CHEK2","TP53","TET2","ATM")
+
+# Initialize an empty list to store the filtered data for each gene
+data.space<- list()
+
+# Loop through each gene
+for (gene in genes) {
+  # Filter the data for the current gene
+  filtered_data <- data[data$Gene == gene, ]
+  
+  # Add 4 empty rows to the bottom of the filtered data
+  filtered_data <- rbind(filtered_data, data.frame(mutID = rep("", 4), Gene = rep("", 4), TVAF = rep(NA, 4)))
+  
+  # Add the filtered data to the list
+  data.space[[gene]] <- filtered_data
+}
+
+# Join all the filtered data sets into one big data frame
+final_data <- do.call(rbind, data.space)
+
+#add id countin 1-...
+final_data$id <- seq(1, nrow(final_data))
+
+final_data->data
+
+empty_bar <- 4
+
+
+# prepare a data frame for base lines
+base_data <- data %>% 
+  group_by(Gene) %>% 
+  summarize(start=min(id), end=max(id)) %>% 
+  rowwise() %>% 
+  mutate(title=mean(c(start, end)))%>%
+  filter(Gene != "")
+
+# prepare a data frame for grid (scales)
+grid_data <- base_data
+grid_data$end <- grid_data$end[ c( nrow(grid_data), 1:nrow(grid_data)-1)] + 1
+grid_data$start <- grid_data$start - 1
+grid_data <- grid_data[-1,]
+
+
+# Make the plot
+p.rosechart <- ggplot(final_data, aes(x=as.factor(id), y=TVAF, fill=Gene)) +      
+  geom_bar(stat="identity", width=0.9) +
+  
+  
+  geom_segment(data=grid_data, aes(x = end, y = 0, xend = start, yend = 0), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 0.05, xend = start, yend = 0.05), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 0.1, xend = start, yend = 0.1), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 0.2, xend = start, yend = 0.2), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  
+  annotate("text", x = rep(max(data$id),4), y = c(0,0.05,0.1,0.2), label = c("0","5%","10%","20%") , color="grey", size=1.5 , angle=0, fontface="bold", hjust=1) +
+  
+  geom_bar(stat="identity", width=0.9) +
+  
+  ylim(-0.1,0.35) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank())+
+  coord_polar()+
+
+  geom_segment(data=base_data, aes(x = start, y = -0.01, xend = end, yend = -0.01), colour = "grey", alpha=0.8, size=0.6 , inherit.aes = FALSE ) +
+  geom_text(data=base_data, aes(x = title, y = -0.032, label=Gene), colour = "grey", alpha=0.8, size=1.7, fontface="bold", inherit.aes = FALSE)
+
+
+p.rosechart
+
+png("output/figures/p.rosechart.png",width=8, height=8,units="in",res=500,type="cairo")
+p.rosechart
+dev.off()
+
+
