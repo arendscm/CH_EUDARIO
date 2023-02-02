@@ -29,10 +29,15 @@ data1 <- read.table('data/raw/Run1/variantcalls_P1346.csv',
                     header = TRUE, sep = "\t", stringsAsFactors = FALSE)
 data2 <- read.table('data/raw/Run2/variantcalls_P1519.csv',
                     header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+data3 <- read.table('data/raw/Run3/variantcalls_P1803.csv',
+                    header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+
 data1%>%
   mutate(run = "P1346")->data1
 data2%>%
   mutate(run = "P1519")->data2 
+data3%>%
+  mutate(run = "P1803")->data3
 
 # load tags 
 tags <- read.table('data/external/tags_run1_run2.csv',
@@ -61,7 +66,7 @@ hotspots <- c("chr2_25234374_25234374",     #DNMT3A R882C
 )
 
 ##calculate mutation frequencies run-wise
-for (file in c("data1", "data2")){
+for (file in c("data1", "data2", "data3")){
   print(file)
   eval(as.name(file)) %>%
     mutate(Sample_orig = Sample)%>%
@@ -82,6 +87,7 @@ for (file in c("data1", "data2")){
 
 ###join and remove uninteresting columns
 data <- full_join(data1,data2) %>% dplyr::select(-c("CLNALLELEID", "CLNDN", "CLNDISDB", "CLNREVSTAT", "CLNSIG", "SIFT_score", "SIFT_converted_rankscore", "SIFT_pred", "LRT_score", "LRT_converted_rankscore", "LRT_pred", "MutationTaster_score", "MutationTaster_converted_rankscore", "MutationTaster_pred", "MutationAssessor_score", "MutationAssessor_score_rankscore", "MutationAssessor_pred", "FATHMM_score", "FATHMM_converted_rankscore", "FATHMM_pred", "PROVEAN_score", "PROVEAN_converted_rankscore", "PROVEAN_pred", "MetaSVM_score", "MetaSVM_rankscore", "MetaSVM_pred", "MetaLR_score", "MetaLR_rankscore", "MetaLR_pred", "M.CAP_score", "M.CAP_rankscore", "M.CAP_pred", "MutPred_score", "MutPred_rankscore", "fathmm.MKL_coding_score", "fathmm.MKL_coding_rankscore", "fathmm.MKL_coding_pred", "Eigen_coding_or_noncoding", "Eigen.raw", "Eigen.PC.raw", "GenoCanyon_score", "GenoCanyon_score_rankscore", "integrated_fitCons_score", "integrated_fitCons_score_rankscore", "integrated_confidence_value", "GERPpp_RS", "GERP.._RS_rankscore", "phyloP100way_vertebrate", "phyloP100way_vertebrate_rankscore", "phyloP20way_mammalian", "phyloP20way_mammalian_rankscore", "phastCons100way_vertebrate", "phastCons100way_vertebrate_rankscore", "phastCons20way_mammalian", "phastCons20way_mammalian_rankscore", "SiPhy_29way_logOdds", "SiPhy_29way_logOdds_rankscore", "Interpro_domain", "GTEx_V6p_gene", "GTEx_V6p_tissue", "fwd.Primer", "rev_Primer", "Status", "Note", "AmpliconRange", "AmpliconSize", "InsertRange", "InsertSize", "InsertSeq", "offsetL", "offsetR"))
+data <- full_join(data,data3) %>% dplyr::select(-c("CLNALLELEID", "CLNDN", "CLNDISDB", "CLNREVSTAT", "CLNSIG", "SIFT_score", "SIFT_converted_rankscore", "SIFT_pred", "LRT_score", "LRT_converted_rankscore", "LRT_pred", "MutationTaster_score", "MutationTaster_converted_rankscore", "MutationTaster_pred", "MutationAssessor_score", "MutationAssessor_score_rankscore", "MutationAssessor_pred", "FATHMM_score", "FATHMM_converted_rankscore", "FATHMM_pred", "PROVEAN_score", "PROVEAN_converted_rankscore", "PROVEAN_pred", "MetaSVM_score", "MetaSVM_rankscore", "MetaSVM_pred", "MetaLR_score", "MetaLR_rankscore", "MetaLR_pred", "M.CAP_score", "M.CAP_rankscore", "M.CAP_pred", "MutPred_score", "MutPred_rankscore", "fathmm.MKL_coding_score", "fathmm.MKL_coding_rankscore", "fathmm.MKL_coding_pred", "Eigen_coding_or_noncoding", "Eigen.raw", "Eigen.PC.raw", "GenoCanyon_score", "GenoCanyon_score_rankscore", "integrated_fitCons_score", "integrated_fitCons_score_rankscore", "integrated_confidence_value", "GERPpp_RS", "GERP.._RS_rankscore", "phyloP100way_vertebrate", "phyloP100way_vertebrate_rankscore", "phyloP20way_mammalian", "phyloP20way_mammalian_rankscore", "phastCons100way_vertebrate", "phastCons100way_vertebrate_rankscore", "phastCons20way_mammalian", "phastCons20way_mammalian_rankscore", "SiPhy_29way_logOdds", "SiPhy_29way_logOdds_rankscore", "Interpro_domain", "GTEx_V6p_gene", "GTEx_V6p_tissue", "fwd.Primer", "rev_Primer", "Status", "Note", "AmpliconRange", "AmpliconSize", "InsertRange", "InsertSize", "InsertSeq", "offsetL", "offsetR"))
 
 #merge variant calling tables from different runs and modify/add columns needed for filtering
 df <- data.frame(data) %>% 
