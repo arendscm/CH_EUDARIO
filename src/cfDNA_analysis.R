@@ -41,7 +41,7 @@ source("src/global_functions_themes.R")
 ########   cf DNA analysis ####
 
 ##interesting gene groups
-variables <- c("Patient.ID","Sample_orig","cf","mutID","position","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "GeneDetail", "ExonicFunc", "AAChange", "cytoBand","readDepth", "TR1", "TR1_plus", "TR1_minus", "TR2", "TR2_plus", "TR2_minus", "TVAF", "AF", "avsnp150", "cosmic92_coding","snp","mutFreq")
+variables <- c("Patient.ID","Sample_orig","mutID","position","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "GeneDetail", "ExonicFunc", "AAChange", "cytoBand","readDepth", "TR1", "TR1_plus", "TR1_minus", "TR2", "TR2_plus", "TR2_minus", "TVAF", "AF", "avsnp150","cosmic92_coding","snp","mutFreq","p.binom","n.mut","n.material","sum_cf","sum_wb","Material")
 ch_genes <- c("DNMT3A","TET2","ASXL1","PPM1D","CBL","CEBPA","GNB1","GNAS","IDH1","IDH2","JAK2","SF3B1","SRSF2","U2AF1;U2AF1L5")
 tp53_genes <- c("TP53")
 brca_genes <- c("BRCA1","BRCA2")
@@ -49,37 +49,38 @@ hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM17
 
 #data frame with mutation calls from cfDNA             
 df %>% 
-  filter(cf==1) %>% 
+  filter(Material=="cf") %>% 
   filter(Visite == "C1D1")%>%
-  dplyr::select(variables,p.binom) %>%
-  mutate(cfID=paste(Patient.ID,position))-> df.cf
+  dplyr::select(all_of(variables)) %>%
+  mutate(cfID=paste(Patient.ID,position,sep="_"))-> df.cf
 df %>% 
-  filter(cf==0) %>% 
+  filter(Material=="wb") %>% 
   filter(Visite == "C1D1")%>%
-  dplyr::select(variables,p.binom) %>%
-  mutate(cfID=paste(Patient.ID,position))-> df.wb
+  dplyr::select(all_of(variables)) %>%
+  mutate(cfID=paste(Patient.ID,position,sep="_"))-> df.wb
 
-anti_join(df.cf, df.wb, by= "cfID")->df.cf_only
-save(df.cf_only,file="data/interim/df.cf_only.RDATA")
+#anti_join(df.cf, df.wb, by= "cfID")->df.cf_only
+#save(df.cf_only,file="data/interim/df.cf_only.RDATA")
 
 #data frame with mutation calls from WB samples that have matched cfDNA samples
 df %>% 
-  filter(is.element(Sample,df.cf$Sample)) %>% 
-  filter(cf==0) %>% 
-  dplyr::select(variables,p.binom) %>%
-  mutate(cfID=paste(Patient.ID,position)) -> df.cf_wb
+  filter(is.element(Patient.ID,df.cf$Patient.ID)) %>% 
+  filter(is.na(replicate))%>%
+  filter(Material=="wb") %>% 
+  dplyr::select(all_of(variables)) %>%
+  mutate(cfID=paste(Patient.ID,position,sep="_")) -> df.cf_wb
 
-##identity check via SNPs
+##identity check via SNP
 left_join(df.cf,df.cf_wb,by="cfID") %>% 
   filter(snp.x == 1) %>% 
-  ggplot(aes(x=Sample.x,y=TVAF.x-TVAF.y)) +
-  geom_point()
+  ggplot(aes(x=Patient.ID.x,y=TVAF.x-TVAF.y)) +
+  geom_point()+coord_flip()
 
-mismatch <- c("2-E2","2-E8","2-H8","2-A7")
+#mismatch <- c("2-E2","2-E8","2-H8","2-A7")d
 
 #Correlation Plot WB vs cfDNA
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
-  filter(!is.element(Sample.x,mismatch))%>% 
+  #filter(!is.element(Sample.x,mismatch))%>% 
   ggscatter(., 
             x = "TVAF.x", 
             y = "TVAF.y", 
@@ -95,7 +96,7 @@ p.cfDNACor
 
 ##Plot that shows VAF WB vs VAF ctDNA including color for group of mutation
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
-  filter(!is.element(Sample.x,mismatch))%>%
+  #filter(!is.element(Sample.x,mismatch))%>%
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
   mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
   mutate(gene = ifelse(is.element(Gene.x,ch_genes),"CH",
@@ -127,7 +128,7 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
 
 ##TP53 mutations only 
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
-  filter(!is.element(Sample.x,mismatch))%>%
+  #filter(!is.element(Sample.x,mismatch))%>%
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
   mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
   mutate(gene = ifelse(is.element(Gene.x,ch_genes),"CH",
@@ -154,7 +155,7 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
 
 ##detecting BRCA mutations in cfDNA (this will later on also be important when looking for BRCA reversion mutations)
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
-  filter(!is.element(Sample.x,mismatch))%>%
+  #filter(!is.element(Sample.x,mismatch))%>%
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
   mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
   mutate(gene = ifelse(is.element(Gene.x,ch_genes),"CH",
