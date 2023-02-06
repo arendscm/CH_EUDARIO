@@ -109,3 +109,6 @@ rm(df)
 
 save.image("data/interim/seqdata_filtered.RData")
 
+filename="output/filtered_results_06.02.2023.xlsx"
+write.xlsx(df.filtered,filename,sheetName = "filtered_results",append=TRUE)
+

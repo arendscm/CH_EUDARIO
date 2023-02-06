@@ -122,7 +122,7 @@ write.csv(df,'data/interim/mutationcalls.csv')
 ##Save RData for further use
   tempdata <-ls()
   rm(list=tempdata[tempdata != "df"])
+  rm(tempdata)
   
 save.image('data/interim/seqdata.RData')
   
-

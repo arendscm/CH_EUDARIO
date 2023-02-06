@@ -43,37 +43,21 @@ df.snp%>%
   mutate(PatSample = paste(Patient.ID,Sample,Visite,sep="_"))->df.snp
 
 ########   SNP-Comparison -> Heatmap ####
-QC_germline<-read.table(file = 'QC/Total_result.txt', sep = '\t', header = FALSE)
-names(QC_germline) <- c("Sample1","Sample2","Score", "MatchingStatus")
-filename="QC/QC_germline.xlsx"
+#QC_germline<-read.table(file = 'QC/Total_result.txt', sep = '\t', header = FALSE)
+#names(QC_germline) <- c("Sample1","Sample2","Score", "MatchingStatus")
+#filename="QC/QC_germline.xlsx"
 #write.xlsx(QC_germline,filename, sheetName="QC", append=TRUE)
 
 
 ##rescue matching germline Mutations
-select(df.snp,Patmut)->b
-b=unlist(b)
-for (Mut in b)
-{print(Mut)
-  df%>%
-    filter(Patmut == Mut)->a
-  bind_rows(df.snp,a)->df.snp
-  unique(df.snp)->df.snp}
-#oder?
 semi_join(df, df.snp, by="Patmut")->df.snp
-
-rm(b)
-rm(a)
-rm(Mut)
-
-#speichern als backup nur bei loop, da das ewig dauert!
-df.snp->df.snpbackup
 
 df.snp%>%
   filter(Patient.ID != "0")->df.snp
 #Heatmap (Robert Skript)
 ### long table to wide table
 newdata <- dcast(data = df.snp,
-                 formula = position ~ PatSample,    
+                 formula = position ~ Sample.ID,    
                  length)         
 
 ### make first column the rowname
@@ -88,7 +72,7 @@ dst <- data.matrix(dst)
 
 ### plotting
 dim <- ncol(dst)
-pdf(file="output/qc/Distanz.pdf",height=35,width=45)
+pdf(file="output/qc/Distanznewdata.pdf",height=35,width=45)
 image(1:dim, 1:dim, dst, axes = FALSE, xlab="", ylab="")
 axis(1, 1:dim, rownames(dst), cex.axis = 0.5, las=3)
 axis(2, 1:dim, rownames(dst), cex.axis = 0.5, las=1)
@@ -108,6 +92,9 @@ rm(filename)
 ##comparison germline:
 # Get the unique patient IDs
 patient_ids <- unique(df.snp$Patient.ID)
+sample_ids <- unique(df.snp$Sample.ID)
+
+
 
 # Initialize a data frame to store the results
 germline_comparison <- data.frame(patient_id = character(0), sample_id_1 = character(0), sample_id_2 = character(0), overlap_percentage = numeric(0))
@@ -153,3 +140,4 @@ filename="output/qc/Distanz.xlsx"
 write.xlsx(germline_comparison,filename,sheetName="germline comparison",append=TRUE)
 
 rm(list=ls())
+
