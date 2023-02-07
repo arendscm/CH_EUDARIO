@@ -110,13 +110,13 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   filter(ExonicFunc.x != "synonymous SNV")%>%
   filter(AF.x<0.1)%>%
   filter(snp.x==FALSE)%>%
-  filter(TVAF.x>0.005|TVAF.y>0.005)%>%
-  filter(TR2.y > 14|TR2.x>14)%>%
+  #filter(TVAF.x>0.005|TVAF.y>0.005)%>%
+  filter(TR2.y > 19|TR2.x>19)%>%
   ggplot(aes(x=TVAF.x,y=TVAF.y,
              color=gene,
              #shape=ExonicFunc.x
              )) +
-  geom_point(size=3)+
+  geom_point(size=2)+
   geom_abline(slope=1,size=1,linetype=2,alpha=0.5)+
   scale_y_log10()+
   scale_x_log10()+
@@ -179,6 +179,116 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   scale_x_log10(limits=c(0.0005,0.5)) +
   scale_y_log10(limits=c(0.0005,0.5)) +
   theme_minimal()
+
+##serial cf data exploration 2 timepoints cf only
+df %>% 
+  filter(Material=="cf")%>%
+  filter(c1d1_cf==1&eot_cf==1)%>%
+  filter(n.material>=2)%>%
+  filter(ExonicFunc != "synonymous SNV") %>%
+  filter(Func == "exonic"|Func == "splicing"|Func == "exonic;splicing") %>%
+  filter(AF<0.01)%>%
+  filter(snp==FALSE)%>%
+  group_by(Patient.ID,position) %>%
+  mutate(maxVAF = max(TVAF),
+         maxTR2 = max(TR2),
+         minpbinom = min(p.binom)) %>%
+  data.frame()%>%
+  mutate(gene = ifelse(is.element(Gene,ch_genes),"CH",
+                       ifelse(is.element(Gene,tp53_genes),"TP53",
+                              ifelse(is.element(Gene,hrd_genes),"HRD",
+                                     ifelse(is.element(Gene,brca_genes),"BRCA","other")))))%>%
+  filter(maxVAF > 0.005,
+         maxTR2 > 7,
+         minpbinom < -8) %>%
+  #filter(TVAF < 0.38) %>%
+  ggplot() + 
+  geom_point(aes(x=Visite,y=TVAF,color=gene,group=Patient.ID),size=1.5,na.rm=FALSE) + 
+  geom_line(aes(x=Visite,y=TVAF,group=position,color=gene),size=1*1,na.rm=FALSE) + 
+  facet_wrap(~ Patient.ID, ncol=6, scales="free", dir="h") +
+  #scale_y_continuous(limits = c(0,0.26)) +
+  labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
+  theme_minimal()-> p.cf.serial
+
+#png("output/figures/p.cf.serial.png",width=6, height=4,units="in",res=500,type="cairo")
+#p.cf.serial
+#dev.off()
+
+##serial cf data exploration 2 timepoints cf and wb
+df %>% 
+  #filter(Material=="cf")%>%
+  filter(c1d1_cf==1&eot_cf==1)%>%
+  filter(c1d1_wb==1&eot_wb==1)%>%
+  filter(is.na(replicate))%>%
+  filter(n.material>=2)%>%
+  #filter(ExonicFunc != "synonymous SNV") %>%
+  #filter(Func == "exonic"|Func == "splicing"|Func == "exonic;splicing") %>%
+  filter(AF<0.01)%>%
+  #filter(snp==FALSE)%>%
+  group_by(Patient.ID,position,Material) %>%
+  mutate(maxVAF = max(TVAF),
+         minVAF = min(TVAF),
+         maxTR2 = max(TR2),
+         minpbinom = min(p.binom)) %>%
+  data.frame()%>%
+  mutate(pat_material = paste(Patient.ID,Material,sep="_"))%>%
+  mutate(pat_material_pos = paste(Patient.ID,Material,position,sep="_"))%>%
+  mutate(gene = ifelse(is.element(Gene,ch_genes),"CH",
+                       ifelse(is.element(Gene,tp53_genes),"TP53",
+                              ifelse(is.element(Gene,hrd_genes),"HRD",
+                                     ifelse(is.element(Gene,brca_genes),"BRCA","other")))))%>%
+  filter(maxVAF > 0.01,
+         maxTR2 > 7,
+         minpbinom < -10) %>%
+  filter(maxVAF<0.4|minVAF<0.4) %>%
+  ggplot() + 
+  geom_point(aes(x=Visite,y=TVAF,color=Gene,group=pat_material),size=1.5,na.rm=FALSE) + 
+  geom_line(aes(x=Visite,y=TVAF,group=pat_material_pos,color=Gene,linetype=Material),size=1*1,na.rm=FALSE) + 
+  facet_wrap(~ Patient.ID, ncol=6, scales="free", dir="h") +
+  #scale_y_continuous(limits = c(0,0.26)) +
+  labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
+  theme_minimal()-> p.cf.serial
+
+#png("output/figures/p.cf.serial.png",width=6, height=4,units="in",res=500,type="cairo")
+#p.cf.serial
+#dev.off()
+
+
+df %>% 
+  filter(Material=="cf")%>%
+  filter(c1d1_cf==1&c7d1_cf==1&eot_cf==1)%>%
+  filter(n.material==3)%>%
+  filter(ExonicFunc != "synonymous SNV") %>%
+  filter(Func == "exonic"|Func == "splicing"|Func == "exonic;splicing") %>%
+  filter(AF<0.01)%>%
+  filter(snp==FALSE)%>%
+  group_by(Patient.ID,position) %>%
+  mutate(maxVAF = max(TVAF),
+         maxTR2 = max(TR2),
+         minpbinom = min(p.binom)) %>%
+  data.frame()%>%
+  mutate(gene = ifelse(is.element(Gene,ch_genes),"CH",
+                       ifelse(is.element(Gene,tp53_genes),"TP53",
+                              ifelse(is.element(Gene,hrd_genes),"HRD",
+                                     ifelse(is.element(Gene,brca_genes),"BRCA","other")))))%>%
+  filter(maxVAF > 0.005,
+         maxTR2 > 7,
+         minpbinom < -8) %>%
+  #filter(TVAF < 0.38) %>%
+  ggplot() + 
+  geom_point(aes(x=Visite,y=TVAF,color=Gene,group=Patient.ID),size=1.5,na.rm=FALSE) + 
+  geom_line(aes(x=Visite,y=TVAF,group=position,color=Gene),size=1*1,na.rm=FALSE) + 
+  facet_wrap(~ Patient.ID, ncol=2, scales="free", dir="h") +
+  #scale_y_continuous(limits = c(0,0.26)) +
+  labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
+  theme_minimal()-> p.cf.serial
+
+png("output/figures/p.cf.serial.png",width=6, height=4,units="in",res=500,type="cairo")
+p.cf.serial
+dev.off()
+
+
+
 
 ########   BRCA and CH Status ####
 ##gehört hier eigentlich nicht hin zu cf Analysis...
