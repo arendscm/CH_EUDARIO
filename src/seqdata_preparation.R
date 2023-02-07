@@ -44,7 +44,8 @@ tags <- read.table('data/external/tags_run1_run2.csv',
                    header = TRUE, sep = ";", stringsAsFactors = FALSE)
 
 ##Patient ID table that identifies Sample IDs with Patient ID and timepoints
-source("src/ids.R")
+source("src/material_table.R")
+
 
 ########   Data Preparation: Restructure data for filtering---------------------------------------------------------------------
 ##relevant variables
@@ -70,8 +71,8 @@ for (file in c("data1", "data2", "data3")){
   print(file)
   eval(as.name(file)) %>%
     mutate(Sample_orig = Sample)%>%
-    mutate(Sample = str_remove(Sample,"cf"))%>% #remove cf from Sample name and create column cf 1/0 instead
-    mutate(cf = ifelse(str_detect(Sample_orig,"cf"),1,0))%>%
+    #mutate(Sample = str_remove(Sample,"cf"))%>% #remove cf from Sample name and create column cf 1/0 instead
+    #mutate(cf = ifelse(str_detect(Sample_orig,"cf"),1,0))%>%
     mutate(AF = replace(AF, AF == ".", 0)) %>% 
     mutate(AF = as.numeric(AF)) %>%
     left_join(.,ids,by = "Sample_orig") %>% ##fuse with SampleID Table
@@ -95,10 +96,12 @@ df <- data.frame(data) %>%
   mutate(tag = as.factor(tag)) %>%
   unique %>%
   group_by(Patient.ID,position) %>% 
-  mutate(serial.mut = n()) %>% #add column stating whether mutation is present in several samples from the same Patient.ID
+  mutate(n.mut = n()) %>% #add column stating whether mutation is present in several samples from the same Patient.ID
   mutate(Genomic_Coordinate_hg38 = paste(Chr,paste("g",Start,sep = "."),paste(Ref,Alt,sep =">"),sep=":"))%>% #Genomic coordinate to match with BRCA_exchange database
   data.frame %>%
-  filter(!is.na(Patient.ID)) #filter out Patients without ID 
+  group_by(Patient.ID,position,Material) %>%
+  mutate(n.material = n())%>% #to see number of times this mutation occurs within the same material (= at different timepoints)
+  data.frame
 
   as.data.frame(df %>% 
                   group_by(freqID) %>% 
@@ -114,10 +117,12 @@ df <- data.frame(data) %>%
   data.frame %>%
   mutate(hotspot = is.element(position2,hotspots)) %>% #hotspots (defined above)
   mutate(igv = paste(Chr,Start,sep=":"))%>%
-  mutate(Patmut=paste(Patient.ID,position,sep="_"))->df
+  mutate(Patmut=paste(Patient.ID,position,sep="_"))%>%
+    left_join(.,df.material,by="Patient.ID")->df
 
 #save as csv in interim data folder
-write.csv(df,'data/interim/mutationcalls.csv')
+write.csv(df%>%filter(!is.na(Patient.ID)),'data/interim/mutationcalls.csv')
+write.csv(df%>%filter(is.na(Patient.ID)),'data/interim/newsample_calls.csv')
 
 ##Save RData for further use
   tempdata <-ls()
