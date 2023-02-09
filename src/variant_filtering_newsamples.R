@@ -28,8 +28,9 @@ library(reshape2)
 #df <- read.csv('data/interim/mutationcalls.csv')
 load('data/interim/seqdata.RData')
 
-######## Get Patient ids
-source("src/ids.R")
+###include only new samples = those with Patient.ID = NA
+df -> df.orig
+df.orig %>% filter(is.na(Patient.ID)) -> df
 
 ########   FILTERING CH calls------------------------------------------------------------
 # filter criteria
@@ -81,10 +82,6 @@ df %>%
   filter(TVAF >0.005) %>%
   dplyr::select(mutID)-> mutID.CHIP.qual
 
-#rescue mutations previously tagged true
-df %>%
-  filter(tag=="true")%>%
-  dplyr::select(mutID)-> mutID.tag.true
 
 #filtering
 ##somatic variants
@@ -97,9 +94,8 @@ inner_join(mutID.func,mutID.count) %>%
   full_join(.,inner_join(df,mutID.hotspots))%>%
   filter(snp == FALSE) %>%
   mutate(current_filter = 1) %>% ##tag all variants passing current filter, then join with list of previously tagged true
-  full_join(.,inner_join(df,mutID.tag.true))-> df.filtered  
+  full_join(df %>% filter(tag=="true"))-> df.filtered
 
-df.filtered %>% filter(Visite == "C1D1")%>%filter(Material=="wb")-> df.filtered.c1d1
 
 rm(mutID.CHIP)+
 rm(mutID.CHIP.qual)+
@@ -111,8 +107,8 @@ rm(mutID.qual)+
 rm(ids)+
 rm(df)
 
-save.image("data/interim/seqdata_filtered.RData")
+save.image("data/interim/newsamples_filtered.RData")
 
-filename="output/filtered_results_06.02.2023.xlsx"
+filename <- paste("output/filtered_newsample_",Sys.Date(),".xlsx",sep="")
 write.xlsx(df.filtered,filename,sheetName = "filtered_results",append=TRUE)
 

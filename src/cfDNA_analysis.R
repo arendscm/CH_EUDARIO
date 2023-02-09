@@ -247,6 +247,7 @@ df %>%
   facet_wrap(~ Patient.ID, ncol=6, scales="free", dir="h") +
   #scale_y_continuous(limits = c(0,0.26)) +
   labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
+  #scale_y_log10(limits=c(0.0005,0.5))+
   theme_minimal()-> p.cf.serial
 
 #png("output/figures/p.cf.serial.png",width=6, height=4,units="in",res=500,type="cairo")
