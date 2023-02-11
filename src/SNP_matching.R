@@ -32,6 +32,8 @@ load('data/interim/seqdata.RData')
 ######## Get Patient ids
 source("src/ids.R")
 
+
+
 ##SNP
 df %>% 
   filter(snp == TRUE)%>%
@@ -40,7 +42,8 @@ df %>%
   filter(AF >= 0.3)-> df.snp
 ##Preparation for Heatmap
 df.snp%>%
-  mutate(PatSample = paste(Patient.ID,Sample,Visite,sep="_"))->df.snp
+  mutate(PatSample = paste(Patient.ID,Sample,Visite,sep="_"))%>%
+  mutate(Sample.ID.match = paste (Sample.ID,replicate,sep="_"))->df.snp
 
 ########   SNP-Comparison -> Heatmap ####
 #QC_germline<-read.table(file = 'QC/Total_result.txt', sep = '\t', header = FALSE)
@@ -52,12 +55,10 @@ df.snp%>%
 ##rescue matching germline Mutations
 semi_join(df, df.snp, by="Patmut")->df.snp
 
-df.snp%>%
-  filter(Patient.ID != "0")->df.snp
 #Heatmap (Robert Skript)
 ### long table to wide table
-newdata <- dcast(data = df.snp,
-                 formula = position ~ Sample.ID,    
+newdata <- dcast(data = df.snp.Pat,
+                 formula = position ~ Sample.ID.match,    
                  length)         
 
 ### make first column the rowname
@@ -106,7 +107,7 @@ for (patient_id in patient_ids) {
   patient_samples <- df.snp[df.snp$Patient.ID == patient_id, ]
   
   # Get the unique sample IDs for the patient
-  sample_ids <- unique(patient_samples$Sample.ID)
+  sample_ids <- unique(patient_samples$Sample.ID.match)
   
   # If there is only one sample for the patient, skip the patient
   if (length(sample_ids) < 2) {
@@ -118,8 +119,8 @@ for (patient_id in patient_ids) {
     for (j in (i+1):length(sample_ids)) {
       
       # Subset the data frame to only include the current samples
-      sample_1 <- patient_samples[patient_samples$Sample.ID== sample_ids[i], ]
-      sample_2 <- patient_samples[patient_samples$Sample.ID == sample_ids[j], ]
+      sample_1 <- patient_samples[patient_samples$Sample.ID.match== sample_ids[i], ]
+      sample_2 <- patient_samples[patient_samples$Sample.ID.match == sample_ids[j], ]
       
       # Get the intersection of the two samples
       intersection <- intersect(sample_1$position, sample_2$position)
