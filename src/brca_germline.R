@@ -68,6 +68,12 @@ df %>%
   filter(AF < 0.01) %>%
   filter(is.element(ExonicFunc,c("frameshift substitution","stopgain"))) -> df.hrd_germline#this list has to be discussed with an expert
 
+
+ids %>% 
+  mutate(hrd_germline = ifelse(is.element(Patient.ID,df.brca_germline$Patient.ID),1,0))%>%
+  dplyr::select(Patient.ID,hrd_germline) %>% 
+  unique -> id.hrd_germline
+
 rm(brcaexchange)
 rm(df)
 rm(ids)
