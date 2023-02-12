@@ -34,6 +34,9 @@ brcaexchange <- read.table("data/external/BRCA_Exchange_Liste_shortend.csv",sep=
 ########   Identify GERMLINE mutations-----------------------------------------------------------
 ##Determine BRCA status
 df %>% 
+  filter(!is.na(Patient.ID))%>%
+  filter(Visite == "C1D1")%>%
+  filter(Material == "wb")%>%
   filter(Gene == "BRCA1"|Gene =="BRCA2") %>%
   filter(TVAF > 0.25) %>%
   filter(ExonicFunc!= "synonymous SNV") %>%
@@ -55,6 +58,9 @@ ids %>%
 hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3")
 
 df %>% 
+  filter(!is.na(Patient.ID))%>%
+  filter(Visite == "C1D1")%>%
+  filter(Material == "wb")%>%
   filter(is.element(Gene,hrd_genes)) %>%
   filter(TVAF > 0.25) %>%
   filter(ExonicFunc!= "synonymous SNV") %>%
