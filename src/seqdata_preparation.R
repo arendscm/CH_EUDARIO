@@ -104,8 +104,8 @@ df <- data.frame(data) %>%
   data.frame
 
   as.data.frame(df %>% 
-                  group_by(freqID) %>% 
-                  summarise(mutID,n(),TVAF,median(TVAF),mean(TVAF),sd(TVAF))) %>% #for every mutation position (as determined by freqID), calculate median VAF, mean VAF and standard deviation. This will be relevant for positions with high mutation frequency
+                group_by(freqID) %>% 
+                dplyr::summarise(mutID,n(),TVAF,median(TVAF),mean(TVAF),sd(TVAF))) %>% #for every mutation position (as determined by freqID), calculate median VAF, mean VAF and standard deviation. This will be relevant for positions with high mutation frequency
   dplyr::select(mutID,TVAF,'median(TVAF)','sd(TVAF)','mean(TVAF)') %>% 
   dplyr::rename(med.vaf = 'median(TVAF)',sd.vaf = 'sd(TVAF)',mean.vaf = 'mean(TVAF)') %>%
   left_join(df,.) %>% 
