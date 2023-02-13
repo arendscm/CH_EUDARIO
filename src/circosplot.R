@@ -25,7 +25,9 @@ library(reshape2)
 
 ########  Load preprocessed sequencing data
 #df <- read.csv('data/interim/mutationcalls.csv')
-load('data/interim/seqdata_filtered.RData')
+load('data/interim/filtered_results_c1d1_final.RData')
+df.filtered.c1d1 <-filtered_results_c1d1_final[is.na(filtered_results_c1d1_final$replicate),]
+
 
 ######## Get Patient ids
 source("src/ids.R")
@@ -36,11 +38,8 @@ source("src/createMAF.R")
 ########   Create txt.file for Circleplot ####--------------------------------------------
 
 ###df nur mit true und Tag 1 Ergebnissen
-df.filtered%>%
-  filter(Visite == "C1D1")%>%
-  filter(tag== "true")%>%
-  filter(Patient.ID !=0)%>%
-  filter(cf == "0")->data.frame
+df.filtered.c1d1%>%
+  filter(tag== "true")->data.frame
 
 ##Gene rausfiltern
 select(data.frame,Gene)->genes
@@ -138,11 +137,11 @@ bind_cols(newCOL,finaltable)->finaltable
 finaltable[is.na(finaltable)] <- 0
 
 #Wirte into excel file
-filename="Circleplot.xlsx"
+filename="output/figures/Circleplot.xlsx"
 write.xlsx(finaltable,filename,sheetName="X",append=TRUE)
 
 #Write into txt file
-write.table(finaltable, file = "output/Circleplot.txt", sep = " ",
+write.table(finaltable, file = "output/figures/Circleplot.txt", sep = " ",
             row.names = FALSE, col.names = FALSE)
 
 rm(backup)+
