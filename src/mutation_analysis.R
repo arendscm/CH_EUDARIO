@@ -32,9 +32,15 @@ library(maftools)
 ########  Load preprocessed sequencing data
 #df <- read.csv('data/interim/mutationcalls.csv')
 load('data/interim/seqdata_filtered.RData')
+load('data/interim/filtered_results_c1d1_final.RDATA')
+df.filtered.c1d1 <-filtered_results_c1d1_final[is.na(filtered_results_c1d1_final$replicate),]
+
+
 
 ######## Get Patient ids
 source("src/ids.R")
+ids <- ids[is.na(ids$replicate), ]
+
 
 ######## Functions and themes
 source("src/createMAF.R")
@@ -46,7 +52,7 @@ source("src/global_functions_themes.R")
 
 #Gene Mutation Prevalence Plot (plots number of gene-x-mutated patients)
 nop <- ids%>%
-  filter(Patient.ID!=0)%>%
+  filter(Visite == "C1D1" & Material == "wb")%>%
   select(.,Patient.ID)%>%
   unique()%>%nrow #number of patients
 
@@ -159,7 +165,7 @@ prev.brca  %>%
   coord_flip() -> p.mutprev
 p.mutprev
 
-png("plots/mutprev-BRCA.png",width=6, height=6,units="in",res=500,type="cairo")
+png("output/figures/mutprev-BRCA.png",width=6, height=6,units="in",res=500,type="cairo")
 p.mutprev
 dev.off()
 
@@ -171,7 +177,10 @@ library(GenVisR)
 
 ###turn df.filtered into MAF compatible format
 df.maf <- makeMAF(df.filtered.c1d1%>% filter(tag=="true"))
-
+#select(df.maf,Hugo_Symbol)%>%unique()->gene
+#save(gene,file="data/interim/gene_Waterfall.RDATA")
+#or
+  load('data/interim/gene_Waterfall.RDATA')
 
 # count sample number
 n <- length(unique(df.maf$Tumor_Sample_Barcode))
@@ -197,9 +206,9 @@ mainLayer <- theme(axis.text.y = element_text(size = 10.5, color = "black", face
                    legend.title = element_text(size = 12),
                    axis.title.x = element_blank())
 
-gene.order <- genes$Hugo_Symbol                      ## vector specifying target genes and gene order
+gene.order <- gene$Hugo_Symbol                      ## vector specifying target genes and gene order
 
-variants <- unique(OvCAmaf$Variant_Classification)    ## vector specifying types of mutation
+variants <- unique(df.maf$Variant_Classification)    ## vector specifying types of mutation
 
 # or
 # variants <- c("Nonsynonymous SNV",                 ## you can choose any type of mutation you want
@@ -208,24 +217,10 @@ variants <- unique(OvCAmaf$Variant_Classification)    ## vector specifying types
 #              "Stop-Gain"
 #               )
 
-names(OvCAmaf) <- c("sample", "gene", "variant_class")  ## rename dataframe to fit costum type
-
 # Generate plot and save as .pdf
-#with MAF format
-waterfall(df.maf, 
-          fileType = "MAF",
-          rmvSilent = FALSE,               ## don't show silent mutations (we don't have any)
-          mainDropMut = TRUE,             ## unused mutation types will be dropped from the legend
-          mainPalette = viridis(5),          ## previously specified colors
-          plotMutBurden = FALSE,          ## mutation burden plot at the top
-          mainLayer = mainLayer,          ## specify defined layers
-          sampRecurLayer = sampRecurLayer, 
-          #geneOrder = gene.order,         ## order to plot the genes (default: decreasing gene freq.)
-          #variant_class_order = Mutation_Type, 
-          section_heights = c(0.15, 1),   ## relative size of the different plots
-          mainXlabel = FALSE,
-          mainLabelSize = 0,
-          main_geneLabSize = 1)
+#cant save the plot...it will just show white
+
+
 
 
 ########   number of mutations plot------------------------------------------------------------
@@ -238,7 +233,7 @@ df.filtered.c1d1 %>%
   group_by(Gene) %>% 
   summarise(Gene.freq = n())%>%
   as.data.frame %>% 
-  full_join(df.filtered %>% filter(tag == "true"),.,by = "Gene") -> df.genefreq
+  full_join(df.filtered.c1d1 %>% filter(tag == "true"),.,by = "Gene") -> df.genefreq
 
 ##mutation frequency according to type of mutation 
 df.genefreq %>%
@@ -406,7 +401,7 @@ rm(Dynamic)+
 rm(Dynamicallpat)
 rm(filename)
 
-setwd("H:/Meine Ablage")
+#setwd("H:/Meine Ablage")
 ####  identity check via SNPs ####
 df %>% 
   filter(Visite=="EOT") %>% 
@@ -735,13 +730,14 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
 
 
 ########   BRCA and CH Status ####
+ids$Patient.ID%>%unique()->ID
 #Create table with BRCA and CH Status
 for (id in ID)
 {#####CH status
   print(id)
-  df.filtered%>%
+  df.filtered.c1d1%>%
     filter(TVAF >= 0.005)%>%
-    filter(ID == id)%>%
+    filter(Patient.ID == id)%>%
     filter(tag=="true")->CHposresults
   #nur CH Mutationen
   semi_join(CHposresults,CHgenes,by="Gene")->CHposresults
@@ -1007,7 +1003,7 @@ p.rosechart <- ggplot(final_data, aes(x=as.factor(id), y=TVAF, fill=Gene)) +
   geom_segment(data=grid_data, aes(x = end, y = 0.1, xend = start, yend = 0.1), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
   geom_segment(data=grid_data, aes(x = end, y = 0.2, xend = start, yend = 0.2), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
   
-  annotate("text", x = rep(max(data$id),4), y = c(0,0.05,0.1,0.2), label = c("0","5%","10%","20%") , color="grey", size=1.5 , angle=0, fontface="bold", hjust=1) +
+  annotate("text", x = rep(max(data$id),4), y = c(0,0.05,0.1,0.2), label = c("0","5%","10%","20%") , color="black", size=2 , angle=0, fontface="bold", hjust=1) +
   
   geom_bar(stat="identity", width=0.9) +
   
@@ -1020,7 +1016,7 @@ p.rosechart <- ggplot(final_data, aes(x=as.factor(id), y=TVAF, fill=Gene)) +
   coord_polar()+
 
   geom_segment(data=base_data, aes(x = start, y = -0.01, xend = end, yend = -0.01), colour = "grey", alpha=0.8, size=0.6 , inherit.aes = FALSE ) +
-  geom_text(data=base_data, aes(x = title, y = -0.032, label=Gene), colour = "grey", alpha=0.8, size=1.7, fontface="bold", inherit.aes = FALSE)
+  geom_text(data=base_data, aes(x = title, y = -0.032, label=Gene), colour = "black", alpha=1, size=2, fontface="bold", inherit.aes = FALSE)
 
 
 p.rosechart

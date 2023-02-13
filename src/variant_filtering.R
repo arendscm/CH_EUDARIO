@@ -117,3 +117,4 @@ save.image("data/interim/seqdata_filtered.RData")
 filename <- paste("output/filtered_results_c1d1_",Sys.Date(),".xlsx",sep="")
 write.xlsx(df.filtered.c1d1,filename,sheetName = "filtered_results",append=TRUE)
 
+write.xlsx(df.filtered.c1d1,filename,sheetName = "filtered_results",append=TRUE)
