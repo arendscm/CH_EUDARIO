@@ -68,13 +68,11 @@ data3 %>%
   mutate(run = "P1803")->data3_Lane2
 
 
-lanes <- read_excel("data/external/Sample-Run-Assignment.xlsx")
-
 
 
 # load tags 
 #tags <- read.table('data/external/tags_run1_run2.csv',
-                   header = TRUE, sep = ";", stringsAsFactors = FALSE)
+                  # header = TRUE, sep = ";", stringsAsFactors = FALSE)
 load("data/interim/tags.RDATA")
 
 ##Patient ID table that identifies Sample IDs with Patient ID and timepoints
@@ -139,7 +137,7 @@ df <- data.frame(data) %>%
   mutate(n.material = n())%>% #to see number of times this mutation occurs within the same material (= at different timepoints)
   data.frame
 
-  as.data.frame(df %>% 
+   as.data.frame(df %>% 
                   group_by(freqID) %>% 
                   summarise(mutID,n(),TVAF,median(TVAF),mean(TVAF),sd(TVAF))) %>% #for every mutation position (as determined by freqID), calculate median VAF, mean VAF and standard deviation. This will be relevant for positions with high mutation frequency
   dplyr::select(mutID,TVAF,'median(TVAF)','sd(TVAF)','mean(TVAF)') %>% 

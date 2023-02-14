@@ -19,6 +19,7 @@ library(reshape)
 library(tidyr)
 library(readxl)
 library(reshape2)
+library(ggplot2)
 
 ########   set working directory #####
 #setwd('H:/Meine Ablage')
@@ -97,9 +98,10 @@ inner_join(mutID.func,mutID.count) %>%
   full_join(.,inner_join(df,mutID.hotspots))%>%
   filter(snp == FALSE) %>%
   mutate(current_filter = 1) %>% ##tag all variants passing current filter, then join with list of previously tagged true
-  full_join(.,inner_join(df,mutID.tag.true))-> df.filtered  
+  full_join(.,inner_join(df,mutID.tag.true))-> df.filtered
 
 df.filtered %>% filter(Visite == "C1D1")%>%filter(Material=="wb")-> df.filtered.c1d1
+
 
 rm(mutID.CHIP)+
 rm(mutID.CHIP.qual)+
@@ -108,6 +110,7 @@ rm(mutID.freq)+
 rm(mutID.func)+
 rm(mutID.hotspots)+
 rm(mutID.qual)+
+rm(mutID.tag.true)+
 rm(ids)+
 rm(df)
 
@@ -118,3 +121,48 @@ filename <- paste("output/filtered_results_c1d1_",Sys.Date(),".xlsx",sep="")
 write.xlsx(df.filtered.c1d1,filename,sheetName = "filtered_results",append=TRUE)
 
 write.xlsx(df.filtered.c1d1,filename,sheetName = "filtered_results",append=TRUE)
+
+
+#Which cf Samples have too many filtered results, and should be repeated:
+#count number of rows per sample ->only cf!
+df.filtered%>%
+  filter(Material=="cf")->test
+
+sample_counts <- as.data.frame(table(test$Sample_orig))
+names(sample_counts) <- c("sample", "count")
+
+#count the counts
+count_freq <- as.data.frame(table(sample_counts$count))
+names(count_freq) <- c("count", "num_samples")
+
+# create a barplot
+ggplot(count_freq, aes(x = count, y = num_samples)) +
+  geom_bar(stat = "identity") +
+  xlab("Count") +
+  ylab("Number of samples")->p.counts_cf
+
+png("output/qc/p.counts_cf.png",width=8, height=8,units="in",res=500,type="cairo")
+p.counts_cf
+dev.off()
+
+#count number of rows per sample ->all samples!
+sample_counts <- as.data.frame(table(df.filtered$Sample_orig))
+names(sample_counts) <- c("sample", "count")
+
+#count the counts
+count_freq <- as.data.frame(table(sample_counts$count))
+names(count_freq) <- c("count", "num_samples")
+
+# create a barplot
+ggplot(count_freq, aes(x = count, y = num_samples)) +
+  geom_bar(stat = "identity") +
+  xlab("Count") +
+  ylab("Number of samples")->p.counts_all
+
+png("output/qc/p.counts_all.png",width=8, height=8,units="in",res=500,type="cairo")
+p.counts_all
+dev.off()
+
+#How many would have to be repeated on what cutoff:
+sample_counts%>%
+  filter(count >= 50)->test2
