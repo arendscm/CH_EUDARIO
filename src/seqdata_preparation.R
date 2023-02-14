@@ -38,7 +38,6 @@ lanes <- read_excel("data/external/Sample-Run-Assignment.xlsx")
 data1%>%
   mutate(run = "P1346")->data1
 
-
 lanes%>%
   filter(Run == "P1519" & Lane == "1")->test
 test$Sample ->SamplesR2L1
@@ -74,7 +73,7 @@ lanes <- read_excel("data/external/Sample-Run-Assignment.xlsx")
 
 # load tags 
 #tags <- read.table('data/external/tags_run1_run2.csv',
-                   header = TRUE, sep = ";", stringsAsFactors = FALSE)
+#                   header = TRUE, sep = ";", stringsAsFactors = FALSE)
 load("data/interim/tags.RDATA")
 
 ##Patient ID table that identifies Sample IDs with Patient ID and timepoints
