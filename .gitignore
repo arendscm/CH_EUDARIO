@@ -4,6 +4,7 @@
 .RDataTmp
 .Ruserdata
 data
-output/figures
-output/QC
+output
 EUDARIO.Rproj
+src/SC-Analysis.R
+output/Overview_Table.xlsx
