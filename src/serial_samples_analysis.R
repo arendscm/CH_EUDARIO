@@ -22,7 +22,6 @@ library(ggthemes)
 library(viridis)
 library(reshape)
 library(ggpubr)
-library(g3viz)
 library(maftools)
 
 ########   set working directory #####
@@ -61,16 +60,18 @@ left_join(df.eot1,df.c1d0,by="ID") %>%
 
 ##serial samples dynamics plot
 df %>% 
-  filter(is.element(Patient.ID,eotsamples$Patient.ID)) %>% 
-  filter(cf==0)-> df.eot
+  filter(!is.na(Patient.ID))%>%
+  filter(is.na(replicate))%>%
+  filter(c1d1_wb==1&eot_wb==1) %>% 
+  filter(Material=="wb")-> df.eot
 
 df.eot %>% 
-  filter(serial.mut>1)%>%
+  filter(n.material>1)%>%
   filter(ExonicFunc != "synonymous SNV") %>%
   filter(Func == "exonic"|Func == "splicing"|Func == "exonic;splicing") %>%
   filter(AF<0.1)%>%
   filter(snp==FALSE)%>%
-  filter(mutFreq < 10) %>% 
+  filter(p.binom < -10) %>% 
   group_by(Patient.ID,position) %>%
   mutate(maxVAF = max(TVAF)) %>%
   data.frame()%>%
@@ -179,7 +180,7 @@ df.eot_rel %>%
             color = "Gene", 
             #palette = viridis(5),
             xlab = "Gene",
-            ylab = "Growthrate",
+            ylab = "n-fold change",
             title = "",
             width = 0.3,
             ylim = c(0,15),
