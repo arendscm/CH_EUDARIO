@@ -28,6 +28,9 @@ library(reshape2)
 #df <- read.csv('data/interim/mutationcalls.csv')
 load('data/interim/seqdata.RData')
 
+##load hotspot data
+load('data/interim/hotspots.RData')
+
 ######## Get Patient ids
 source("src/ids.R")
 
@@ -65,11 +68,13 @@ df %>%
 
 ## rescue hotspots
 df %>%
+  left_join(.,mm_hotspots)%>%
   filter(FisherScore < 20) %>% 
   filter(StrandBalance2 != 1 & StrandBalance2 != 0) %>%     #filter out mutations only seen on one strand
   filter(TR2 > 3) %>%
   filter(TVAF >0.005) %>%
-  filter(hotspot)%>%
+  filter(MM_hotspot)%>%
+  filter(!snp)%>%
   dplyr::select(mutID)-> mutID.hotspots
 
 ## rescue known CHIP mutations with weakened quality criteria
