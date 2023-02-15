@@ -24,6 +24,7 @@ library(reshape)
 library(ggpubr)
 library(g3viz)
 library(maftools)
+library(RColorBrewer)
 
 ########   set working directory #####
 #setwd('H:/Meine Ablage')
@@ -169,6 +170,92 @@ png("output/figures/mutprev-BRCA.png",width=6, height=6,units="in",res=500,type=
 p.mutprev
 dev.off()
 
+###No of mutations
+df.filtered.c1d1%>%
+  filter(tag == "true" & TVAF >= 0.01)->test
+mut_count <- test %>%
+  group_by(Patient.ID) %>%
+  summarize(mutations = n())
+
+mutation_barplot <- mut_count %>%
+  group_by(mutations) %>%
+  summarize(num_patients = n())
+
+# Create the bar plot with ggplot2
+ggplot(mutation_barplot, aes(x = mutations, y = num_patients)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(x = "Number of Mutations", y = "Number of Patients")+
+  scale_x_continuous(limits = c(0, 9), breaks = 0:9)+
+  ggtitle("No. of mutations per patient [>1%]")->p.nom
+
+png("output/figures/no of mutations.png",width=6, height=6,units="in",res=500,type="cairo")
+p.nom
+dev.off()
+
+
+###Comutational plots
+df.filtered.c1d1%>%
+  filter(tag == "true" & TVAF >= 0.01)->test
+
+test<-test%>%
+group_by(Patient.ID) %>%
+  filter(n() >= 3) %>%
+  ungroup()
+
+patient_plots <- ggplot(test, aes(x = position, y = TVAF, fill = Gene)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~Patient.ID, scales = "free_x") +
+  labs(x= "",y = "TVAF", fill = "Genes")+
+  theme(axis.text.x = element_blank(),
+          xlab = NULL,
+          axis.text.y = element_text(size = 8))+
+  scale_y_continuous(breaks = c(0.01, 0.1, 0.2),
+                     labels = c(0.01, 0.1, 0.2))+
+  scale_fill_brewer(palette = "Set3")
+
+##PPM1D Comutations: 
+df.filtered.c1d1%>%
+  filter(tag == "true" & TVAF >= 0.01)->test
+
+filtered_df <- test %>%
+  filter(Gene == "PPM1D")
+
+# Filter the data to include only patients with at least two mutations in the gene "PPM1D"
+filtered_df <- filtered_df %>%
+  group_by(Patient.ID) %>%
+  filter(n() >= 2) %>%
+  ungroup()
+
+filtered_df$Patient.ID%>%
+  unique()->Patient.ID.PPM1DCo
+
+df.filtered.c1d1%>%
+  filter(tag == "true" & TVAF >= 0.01)->test
+
+test<-test%>%
+  group_by(Patient.ID) %>%
+  filter(n() >= 2) %>%
+  ungroup()
+
+test%>%
+  filter(Patient.ID %in% Patient.ID.PPM1DCo)->test
+
+p.PPM1DCo<- ggplot(test, aes(x = position, y = TVAF, fill = Gene)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~Patient.ID, scales = "free_x") +
+  labs(x= "",y = "TVAF", fill = "Genes")+
+  theme(axis.text.x = element_blank(),
+        xlab = NULL,
+        axis.text.y = element_text(size = 8))+
+  scale_y_continuous(breaks = c(0.01, 0.1, 0.2, 0.3),
+                     labels = c(0.01, 0.1, 0.2, 0.3))+
+  scale_fill_brewer(palette = "Set3")
+
+png("output/figures/PPM1D-Comutations.png",width=6, height=6,units="in",res=500,type="cairo")
+p.PPM1DCo
+dev.off()
+
+
 ########   GenVisar - waterfall plot #### 
 
 library(viridisLite)
@@ -220,7 +307,25 @@ variants <- unique(df.maf$Variant_Classification)    ## vector specifying types 
 # Generate plot and save as .pdf
 #cant save the plot...it will just show white
 
+##number of mutations plot------------------------------------------------------------
+df.filtered.c1d1 %>%
+  filter(tag == "true") %>%
+  filter(TVAF >= 0.01) %>%
+  dplyr::select(nom)%>% 
+  table %>% 
+  data.frame %>%
+  filter(. != 0)%>%
+  ggplot(aes(y=Freq,x=.,fill=.)) +
+  geom_bar(stat="identity", width=0.6)+
+  ylab("Number of Patients") +
+  xlab("Number of Mutations")+
+  scale_fill_manual(values=c("#31688EFF","#21908CFF","#21908CFF","#21908CFF"),name="",labels=NULL)+
+  theme_Publication() +theme(legend.position = "none")-> p.nom
+p.nom
 
+png("nom05.png",width=4, height=4,units="in",res=500,type="cairo")
+p.nom
+dev.off()
 
 
 ########   number of mutations plot------------------------------------------------------------
