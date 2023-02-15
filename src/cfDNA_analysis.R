@@ -30,6 +30,7 @@ library(ggpubr)
 ########  Load preprocessed sequencing data
 #df <- read.csv('data/interim/mutationcalls.csv')
 load('data/interim/seqdata.RData')
+load('data/interim/seqdata_filtered.RData')
 
 ######## Get Patient ids
 source("src/ids.R")
@@ -41,9 +42,10 @@ source("src/global_functions_themes.R")
 ########   cf DNA analysis ####
 
 ##interesting gene groups
-variables <- c("Patient.ID","Sample_orig","mutID","position","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "GeneDetail", "ExonicFunc", "AAChange", "cytoBand","readDepth", "TR1", "TR1_plus", "TR1_minus", "TR2", "TR2_plus", "TR2_minus", "TVAF", "AF", "avsnp150","cosmic92_coding","snp","mutFreq","p.binom","n.mut","n.material","sum_cf","sum_wb","Material")
-ch_genes <- c("DNMT3A","TET2","ASXL1","PPM1D","CBL","CEBPA","GNB1","GNAS","IDH1","IDH2","JAK2","SF3B1","SRSF2","U2AF1;U2AF1L5")
+variables <- c("Patient.ID","Sample_orig","mutID","position","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "GeneDetail", "ExonicFunc", "AAChange", "cytoBand","readDepth", "TR1", "TR1_plus", "TR1_minus", "TR2", "TR2_plus", "TR2_minus", "TVAF", "AF", "avsnp150","cosmic92_coding","snp","mutFreq","p.binom","n.mut","n.material","sum_cf","sum_wb","Material","tag")
+ch_genes <- c("DNMT3A","TET2","ASXL1","CBL","CEBPA","GNB1","GNAS","IDH1","IDH2","JAK2","SF3B1","SRSF2","U2AF1;U2AF1L5")
 tp53_genes <- c("TP53")
+ppm1d_genes <- c("PPM1D")
 brca_genes <- c("BRCA1","BRCA2")
 hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3")
 
@@ -67,6 +69,7 @@ df %>%
   filter(is.element(Patient.ID,df.cf$Patient.ID)) %>% 
   filter(is.na(replicate))%>%
   filter(Material=="wb") %>% 
+  filter(Visite == "C1D1")%>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_")) -> df.cf_wb
 
@@ -78,9 +81,11 @@ left_join(df.cf,df.cf_wb,by="cfID") %>%
 
 #mismatch <- c("2-E2","2-E8","2-H8","2-A7")d
 
-#Correlation Plot WB vs cfDNA
+#Correlation Plot WB vs cfDNA all calls, only calls that are present in WB
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
-  #filter(!is.element(Sample.x,mismatch))%>% 
+  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x))%>%
+  filter(TVAF.y < 0.4&TVAF.x<0.4)%>%
+  filter(!snp.y&!snp.x)%>%
   ggscatter(., 
             x = "TVAF.x", 
             y = "TVAF.y", 
@@ -89,8 +94,23 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
             cor.coef = TRUE, 
             cor.method = "pearson",
             size=1,
-            xlab = "VAF whole blood", 
-            ylab = "VAF plasma")->p.cfDNACor
+            ylab = "VAF wholeblood", 
+            xlab = "VAF cfDNA")->p.cfDNACor
+p.cfDNACor
+
+#Correlation Plot WB vs cfDNA
+full_join(df.cf,df.cf_wb,by="cfID") %>% 
+  filter(tag.y == "true")%>%
+  ggscatter(., 
+            y = "TVAF.x", 
+            x = "TVAF.y", 
+            add = "reg.line", 
+            #conf.int = TRUE, 
+            cor.coef = TRUE, 
+            cor.method = "pearson",
+            size=1,
+            xlab = "VAF cfDNA", 
+            ylab = "VAF wholeblood")->p.cfDNACor
 p.cfDNACor
 
 
@@ -102,7 +122,8 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   mutate(gene = ifelse(is.element(Gene.x,ch_genes),"CH",
                        ifelse(is.element(Gene.x,tp53_genes),"TP53",
                               ifelse(is.element(Gene.x,hrd_genes),"HRD",
-                                     ifelse(is.element(Gene.x,brca_genes),"BRCA","other")))))%>%
+                                     ifelse(is.element(Gene.x,brca_genes),"BRCA",
+                                            ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
   #filter(gene != "other") %>%
   mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
   filter(p.binom.x <= -10) %>%
@@ -128,24 +149,26 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
 
 ##TP53 mutations only 
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
+  filter(!is.element(Patient.ID.x,c("4202008","4207011","4220002","4221004","4221032")))%>%
   #filter(!is.element(Sample.x,mismatch))%>%
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
   mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
   mutate(gene = ifelse(is.element(Gene.x,ch_genes),"CH",
                        ifelse(is.element(Gene.x,tp53_genes),"TP53",
                               ifelse(is.element(Gene.x,hrd_genes),"HRD",
-                                     ifelse(is.element(Gene.x,brca_genes),"BRCA","other")))))%>%
-  filter(gene != "other") %>%
+                                     ifelse(is.element(Gene.x,brca_genes),"BRCA",
+                                            ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
   mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
   filter(p.binom.x == -Inf|p.binom.y == -Inf) %>%
   filter(Func.x == "exonic"|Func.x == "splicing"|Func.x == "exonic;splicing") %>%
   filter(ExonicFunc.x != "synonymous SNV")%>%
   filter(AF.x<0.1)%>%
   #filter(snp.x==FALSE)%>%
-  filter(TR2.x>9|TR2.y>9) %>% 
-  filter(TVAF.x>0.005|TVAF.y>0.005)%>%
+  filter(TR2.x>19|TR2.y>19) %>% 
+  filter(TVAF.x>0.001|TVAF.y>0.001)%>%
   filter(gene=="TP53")%>%
-  ggplot(aes(x=TVAF.x,y=TVAF.y,color=gene))+
+  #filter(cosmic_ovary)%>%
+  ggplot(aes(x=TVAF.x,y=TVAF.y,color=cosmic_ovary))+
   geom_point(size=4)+
   geom_abline(slope=1)+
   scale_color_viridis(discrete=TRUE)+
@@ -161,7 +184,8 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   mutate(gene = ifelse(is.element(Gene.x,ch_genes),"CH",
                        ifelse(is.element(Gene.x,tp53_genes),"TP53",
                               ifelse(is.element(Gene.x,hrd_genes),"HRD",
-                                     ifelse(is.element(Gene.x,brca_genes),"BRCA","other")))))%>%
+                                     ifelse(is.element(Gene.x,brca_genes),"BRCA",
+                                            ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
   filter(gene != "other") %>%
   mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
   filter(p.binom.x < -10) %>%
@@ -214,18 +238,120 @@ df %>%
 #p.cf.serial
 #dev.off()
 
+##preparation:find mutations that are present in both wb and cf
+df%>%  mutate(cfID=paste(Patient.ID,position,sep="_"))%>%
+  filter(Material=="wb")%>%
+  group_by(Visite)%>%
+  dplyr::select(cfID)->wb.cfID
+
+df %>% 
+  filter(c1d1_cf==1&eot_cf==1)%>%
+  filter(c1d1_wb==1&eot_wb==1)%>%
+  filter(Material=="cf")%>%
+  group_by(Visite)%>%
+  mutate(wb=is.element(mutID,wb.mutID))
+
 ##serial cf data exploration 2 timepoints cf and wb
 df %>% 
-  #filter(Material=="cf")%>%
   filter(c1d1_cf==1&eot_cf==1)%>%
   filter(c1d1_wb==1&eot_wb==1)%>%
   filter(is.na(replicate))%>%
-  filter(n.material>=2)%>%
-  #filter(ExonicFunc != "synonymous SNV") %>%
-  #filter(Func == "exonic"|Func == "splicing"|Func == "exonic;splicing") %>%
+  mutate(cfID_visit = paste(Patient.ID,position,Visite,sep="_"))%>%
+  mutate(gene = ifelse(is.element(Gene,ch_genes),"CH",
+                       ifelse(is.element(Gene,tp53_genes),"TP53",
+                              ifelse(is.element(Gene,hrd_genes),"HRD",
+                                     ifelse(is.element(Gene,brca_genes),"BRCA",
+                                            ifelse(is.element(Gene,ppm1d_genes),"PPM1D","other"))))))%>%
+  group_by(cfID_visit)%>%
+  mutate(n.visit=n())%>%
+  data.frame%>%
+  filter(n.material>=2|n.visit>1)%>%
   filter(AF<0.01)%>%
-  #filter(snp==FALSE)%>%
-  group_by(Patient.ID,position,Material) %>%
+  group_by(Patient.ID,position) %>%
+  mutate(maxVAF = max(TVAF),
+         minVAF = min(TVAF),
+         maxTR2 = max(TR2),
+         minpbinom = min(p.binom)) %>%
+  data.frame()%>%
+  mutate(pat_material = paste(Patient.ID,Material,sep="_"))%>%
+  mutate(pat_material_pos = paste(Patient.ID,Material,position,sep="_"))%>%
+  filter(maxVAF > 0.01,
+         maxTR2 > 9,
+         minpbinom < -10) %>%
+  filter(maxVAF<0.4|minVAF<0.4) %>%
+  filter(TVAF<0.35)%>%
+  ggplot() + 
+  geom_point(aes(x=Visite,y=TVAF,color=gene,group=pat_material,shape=Material),size=1.5,na.rm=FALSE) + 
+  geom_line(aes(x=Visite,y=TVAF,group=pat_material_pos,color=gene,linetype=Material),size=1*1,na.rm=FALSE) + 
+  facet_wrap(~ Patient.ID, ncol=6, scales="free", dir="h") +
+  #scale_y_continuous(limits = c(0,0.26)) +
+  labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
+  scale_y_log10(limits=c(0.0005,0.5))+
+  theme_minimal()-> p.cf.serial
+
+
+##facet by patient and material including "cf_only"
+##serial cf data exploration 2 timepoints cf and wb
+df %>% 
+  filter(c1d1_cf==1&eot_cf==1)%>%
+  filter(c1d1_wb==1&eot_wb==1)%>%
+  filter(is.na(replicate))%>%
+  mutate(cfID_visit = paste(Patient.ID,position,Visite,sep="_"))%>%
+  group_by(cfID_visit)%>%
+  mutate(n.visit=n()) %>% data.frame()%>% filter(n.visit==1)%>% filter(Material=="cf") %>% mutate(Material="cf_only") ->df.cfonly
+
+df %>% 
+  filter(c1d1_cf==1&eot_cf==1)%>%
+  filter(c1d1_wb==1&eot_wb==1)%>%
+  filter(is.na(replicate))%>%
+  mutate(cfID_visit = paste(Patient.ID,position,Visite,sep="_"))%>%
+  group_by(cfID_visit)%>%
+  mutate(n.visit=n())%>%
+  data.frame%>%
+  full_join(.,df.cfonly)%>%
+  filter(n.material>=2|n.visit>1)%>%
+  filter(AF<0.01)%>%
+  group_by(Patient.ID,position) %>%
+  mutate(maxVAF = max(TVAF),
+         minVAF = min(TVAF),
+         maxTR2 = max(TR2),
+         minpbinom = min(p.binom)) %>%
+  data.frame()%>%
+  mutate(gene = ifelse(is.element(Gene,ch_genes),"CH",
+                       ifelse(is.element(Gene,tp53_genes),"TP53",
+                              ifelse(is.element(Gene,hrd_genes),"HRD",
+                                     ifelse(is.element(Gene,brca_genes),"BRCA",
+                                            ifelse(is.element(Gene,ppm1d_genes),"PPM1D","other"))))))%>%
+  mutate(pat_material = paste(Patient.ID,Material,sep="_"))%>%
+  mutate(pat_material_pos = paste(Patient.ID,Material,position,sep="_"))%>%
+  filter(maxVAF > 0.01,
+         maxTR2 > 9,
+         minpbinom < -10) %>%
+  filter(maxVAF<0.4|minVAF<0.4) %>%
+  filter(TVAF<0.35)%>%
+  ggplot() + 
+  geom_point(aes(x=Visite,y=TVAF,color=gene,group=pat_material),size=2,na.rm=FALSE) + 
+  geom_line(aes(x=Visite,y=TVAF,group=pat_material_pos,color=gene),size=1*1,na.rm=FALSE) + 
+  facet_grid(Material ~ Patient.ID) +
+  #scale_y_continuous(limits = c(0,0.26)) +
+  labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
+  scale_y_log10(limits=c(0.0005,0.5))+
+  theme_minimal()-> p.cf.serial
+
+
+##Test single patient by mutation
+df %>% 
+  filter(Patient.ID=="4221010")%>%
+  filter(c1d1_cf==1&eot_cf==1)%>%
+  filter(c1d1_wb==1&eot_wb==1)%>%
+  filter(is.na(replicate))%>%
+  mutate(cfID_visit = paste(Patient.ID,position,Visite,sep="_"))%>%
+  group_by(cfID_visit)%>%
+  mutate(n.visit=n())%>%
+  data.frame%>%
+  filter(n.material>=2|n.visit>1)%>%
+  filter(AF<0.01)%>%
+  group_by(Patient.ID,position) %>%
   mutate(maxVAF = max(TVAF),
          minVAF = min(TVAF),
          maxTR2 = max(TR2),
@@ -236,19 +362,144 @@ df %>%
   mutate(gene = ifelse(is.element(Gene,ch_genes),"CH",
                        ifelse(is.element(Gene,tp53_genes),"TP53",
                               ifelse(is.element(Gene,hrd_genes),"HRD",
-                                     ifelse(is.element(Gene,brca_genes),"BRCA","other")))))%>%
+                                     ifelse(is.element(Gene,brca_genes),"BRCA",
+                                            ifelse(is.element(Gene,ppm1d_genes),"PPM1D","other"))))))%>%
   filter(maxVAF > 0.01,
-         maxTR2 > 7,
+         maxTR2 > 9,
          minpbinom < -10) %>%
   filter(maxVAF<0.4|minVAF<0.4) %>%
+  filter(TVAF<0.35)%>%
+  mutate(AAChange_mod = str_replace(AAChange, ":NM.*:p.", ":p."))%>%
   ggplot() + 
-  geom_point(aes(x=Visite,y=TVAF,color=Gene,group=pat_material),size=1.5,na.rm=FALSE) + 
+  geom_point(aes(x=Visite,y=TVAF,color=Gene,group=pat_material,shape=Material),size=1.5,na.rm=FALSE) + 
   geom_line(aes(x=Visite,y=TVAF,group=pat_material_pos,color=Gene,linetype=Material),size=1*1,na.rm=FALSE) + 
-  facet_wrap(~ Patient.ID, ncol=6, scales="free", dir="h") +
+  facet_wrap(~ AAChange_mod, ncol=6, dir="h") +
   #scale_y_continuous(limits = c(0,0.26)) +
   labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
   #scale_y_log10(limits=c(0.0005,0.5))+
   theme_minimal()-> p.cf.serial
+
+##serial cf data exploration 2 timepoints cf and wb TP53 only
+df %>% 
+  filter(c1d1_cf==1&eot_cf==1)%>%
+  filter(c1d1_wb==1&eot_wb==1)%>%
+  filter(is.na(replicate))%>%
+  mutate(cfID_visit = paste(Patient.ID,position,Visite,sep="_"))%>%
+  group_by(cfID_visit)%>%
+  mutate(n.visit=n())%>%
+  data.frame%>%
+  filter(n.material>=2|n.visit>1)%>%
+  filter(Gene=="TP53")%>%
+  mutate(cosmic_ovary = str_detect(cosmic92_coding,"ovary")) %>%
+  filter(AF<0.01)%>%
+  group_by(Patient.ID,position) %>%
+  mutate(maxVAF = max(TVAF),
+         minVAF = min(TVAF),
+         maxTR2 = max(TR2),
+         minpbinom = min(p.binom)) %>%
+  data.frame()%>%
+  mutate(pat_material = paste(Patient.ID,Material,sep="_"))%>%
+  mutate(pat_material_pos = paste(Patient.ID,Material,position,sep="_"))%>%
+  mutate(gene = ifelse(is.element(Gene,ch_genes),"CH",
+                       ifelse(is.element(Gene,tp53_genes),"TP53",
+                              ifelse(is.element(Gene,hrd_genes),"HRD",
+                                     ifelse(is.element(Gene,brca_genes),"BRCA",
+                                            ifelse(is.element(Gene,ppm1d_genes),"PPM1D","other"))))))%>%
+  filter(maxVAF > 0.001,
+         maxTR2 > 9,
+         minpbinom < -10) %>%
+  filter(maxVAF<0.4|minVAF<0.4) %>%
+  filter(TVAF<0.35)%>%
+  ggplot() + 
+  geom_point(aes(x=Visite,y=TVAF,color=factor(n.visit),group=pat_material,shape=Material),size=2,na.rm=FALSE) + 
+  geom_line(aes(x=Visite,y=TVAF,group=pat_material_pos,linetype=Material),size=1*1,na.rm=FALSE) + 
+  facet_wrap(~ Patient.ID, ncol=5, dir="h") +
+  #scale_y_continuous(limits = c(0,0.26)) +
+  labs(x="Time in days",y="Variant allele frequency",colour="detected in WB/cfDNA") +
+  scale_y_log10(limits=c(0.0005,0.5))+
+  theme_minimal()-> p.cf.serial
+
+
+##serial cf data exploration 2 timepoints cf and wb HRD only
+df %>% 
+  filter(c1d1_cf==1&eot_cf==1)%>%
+  filter(c1d1_wb==1&eot_wb==1)%>%
+  filter(is.na(replicate))%>%
+  mutate(cfID_visit = paste(Patient.ID,position,Visite,sep="_"))%>%
+  group_by(cfID_visit)%>%
+  mutate(n.visit=n())%>%
+  data.frame%>%
+  filter(n.material>=2|n.visit>1)%>%
+  filter(is.element(Gene,hrd_genes))%>%
+  mutate(cosmic_ovary = str_detect(cosmic92_coding,"ovary")) %>%
+  filter(AF<0.01)%>%
+  group_by(Patient.ID,position) %>%
+  mutate(maxVAF = max(TVAF),
+         minVAF = min(TVAF),
+         maxTR2 = max(TR2),
+         minpbinom = min(p.binom)) %>%
+  data.frame()%>%
+  mutate(pat_material = paste(Patient.ID,Material,sep="_"))%>%
+  mutate(pat_material_pos = paste(Patient.ID,Material,position,sep="_"))%>%
+  mutate(gene = ifelse(is.element(Gene,ch_genes),"CH",
+                       ifelse(is.element(Gene,tp53_genes),"TP53",
+                              ifelse(is.element(Gene,hrd_genes),"HRD",
+                                     ifelse(is.element(Gene,brca_genes),"BRCA",
+                                            ifelse(is.element(Gene,ppm1d_genes),"PPM1D","other"))))))%>%
+  filter(maxVAF > 0.005,
+         maxTR2 > 19,
+         minpbinom < -10) %>%
+  filter(maxVAF<0.4|minVAF<0.4) %>%
+  filter(TVAF<0.35)%>%
+  ggplot() + 
+  geom_point(aes(x=Visite,y=TVAF,color=factor(n.visit),group=pat_material,shape=Material),size=2,na.rm=FALSE) + 
+  geom_line(aes(x=Visite,y=TVAF,group=pat_material_pos,linetype=Material,color=cosmic_ovary),size=1*1,na.rm=FALSE) + 
+  facet_wrap(~ Patient.ID, ncol=5, dir="h") +
+  #scale_y_continuous(limits = c(0,0.26)) +
+  labs(x="Time in days",y="Variant allele frequency",colour="detected in WB/cfDNA") +
+  scale_y_log10(limits=c(0.0005,0.5))+
+  theme_minimal()-> p.cf.serial
+
+
+###test cf serial with BRCA mutations
+df %>% 
+  filter(c1d1_cf==1&eot_cf==1)%>%
+  filter(c1d1_wb==1&eot_wb==1)%>%
+  filter(is.na(replicate))%>%
+  mutate(cfID_visit = paste(Patient.ID,position,Visite,sep="_"))%>%
+  group_by(cfID_visit)%>%
+  mutate(n.visit=n())%>%
+  data.frame%>%
+  filter(n.material>=2|n.visit>1)%>%
+  mutate(cosmic_ovary = str_detect(cosmic92_coding,"ovary")) %>%
+  filter(AF<0.01)%>%
+  group_by(Patient.ID,position) %>%
+  mutate(maxVAF = max(TVAF),
+         minVAF = min(TVAF),
+         maxTR2 = max(TR2),
+         minpbinom = min(p.binom)) %>%
+  data.frame()%>%
+  mutate(pat_material = paste(Patient.ID,Material,sep="_"))%>%
+  mutate(pat_material_pos = paste(Patient.ID,Material,position,sep="_"))%>%
+  mutate(gene = ifelse(is.element(Gene,ch_genes),"CH",
+                       ifelse(is.element(Gene,tp53_genes),"TP53",
+                              ifelse(is.element(Gene,hrd_genes),"HRD",
+                                     ifelse(is.element(Gene,brca_genes),"BRCA",
+                                            ifelse(is.element(Gene,ppm1d_genes),"PPM1D","other"))))))%>%
+  filter(gene=="BRCA")%>%
+  filter(maxVAF > 0.005,
+         maxTR2 > 19,
+         minpbinom < -10) %>%
+  filter(maxVAF<0.4|minVAF<0.4) %>%
+  filter(TVAF<0.35)%>%
+  ggplot() + 
+  geom_point(aes(x=Visite,y=TVAF,color=factor(n.visit),group=pat_material,shape=Material),size=2,na.rm=FALSE) + 
+  geom_line(aes(x=Visite,y=TVAF,group=pat_material_pos,linetype=Material,color=cosmic_ovary),size=1*1,na.rm=FALSE) + 
+  facet_wrap(~ Patient.ID, ncol=5, dir="h") +
+  #scale_y_continuous(limits = c(0,0.26)) +
+  labs(x="Time in days",y="Variant allele frequency",colour="detected in WB/cfDNA") +
+  scale_y_log10(limits=c(0.0005,0.5))+
+  theme_minimal()
 
 #png("output/figures/p.cf.serial.png",width=6, height=4,units="in",res=500,type="cairo")
 #p.cf.serial
