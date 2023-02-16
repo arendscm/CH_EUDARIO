@@ -112,3 +112,95 @@ save.image("data/interim/newsamples_filtered.RData")
 filename <- paste("output/filtered_newsample_",Sys.Date(),".xlsx",sep="")
 write.xlsx(df.filtered,filename,sheetName = "filtered_results",append=TRUE)
 
+################### Overview table ####
+#works once tags are included in seqdata preparation
+df.filtered%>%
+  filter(tag== "true")->Patresults
+
+
+ch_genes <- c("DNMT3A","TET2","ASXL1","PPM1D","CBL","CEBPA","GNB1","GNAS","IDH1","IDH2","JAK2","SF3B1","SRSF2","U2AF1;U2AF1L5")
+hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3")
+
+
+
+##Patient.ID
+select(filtered_results_SC,Patient.ID)%>%
+  unique()->Patient.ID
+
+
+#filtered results of patients
+Patresults%>%
+  filter(TVAF >= 0.05)->Patresults5
+Patresults%>%
+  filter(TVAF >= 0.02)->Patresults2
+Patresults%>%
+  filter(TVAF >= 0.1)->Patresults10
+
+#Create a new dataframe with patient IDs as the first column
+Table <- Patient.ID %>%
+  rename(Patient.ID = "Patient.ID") %>%
+  mutate(CH = 0, `VAF >10%` = 0, `VAF >5%` = 0, `VAF >2%` = 0,
+         `Mutation_comb+VAF`= NA)
+
+
+# For each patient in the mutations dataframe, check if they have a mutation in any of the genes
+# If they do, add 1 to the corresponding gene column in the new table
+for (i in 1:nrow(Patresults)) {
+  ID <- Patresults[i, "Patient.ID"]
+  ID<-as.character(ID)
+  gene <- Patresults[i, "Gene"]
+  gene<-as.character(gene)
+  if (gene %in% ch_genes) {
+    Table[Table$Patient.ID == ID, "CH"] <- 1
+  }
+}
+
+
+## Mutation with VAF over 10%
+# Get the unique patient ids from the "Patresults5" table
+patient_ids_10 <- unique(Patresults10$Patient.ID)
+
+# Compare the patient_ids from Table with the patient_ids in Patresults5
+Table$`VAF >10%` <- ifelse(Table$Patient.ID %in% patient_ids_10, 1, Table$`VAF >10%`)
+
+## Mutation with VAF over 5%
+# Get the unique patient ids from the "Patresults5" table
+patient_ids_5 <- unique(Patresults5$Patient.ID)
+
+# Compare the patient_ids from Table with the patient_ids in Patresults5
+Table$`VAF >5%` <- ifelse(Table$Patient.ID %in% patient_ids_5, 1, Table$`VAF >5%`)
+
+## Mutation with VAF over 2%
+# Get the unique patient ids from the "Patresults2" table
+patient_ids_2 <- unique(Patresults2$Patient.ID)
+
+# Compare the patient_ids from Table with the patient_ids in Patresults5
+Table$`VAF >2%` <- ifelse(Table$Patient.ID %in% patient_ids_2, 1, Table$`VAF >2%`)
+
+Table[is.na(Table)] <- 0
+
+
+##Mutation comb with VAF
+Patient.ID$Patient.ID%>%
+  unique()->ID
+
+for (patient_id in ID) {
+  # only Patient ID results
+  patient_mutations <- subset(Patresults, Patresults$Patient.ID == patient_id)
+  
+  patient_mutations_vaf <- character(nrow(patient_mutations))
+  for (i in 1:nrow(patient_mutations)){
+    patient_mutations_vaf[i] <- paste0(patient_mutations$Gene[i], " (",patient_mutations$TVAF[i],")")
+  }
+  # Check if the patient has a mutation
+  if (nrow(patient_mutations) > 0) {
+    # If the patient has a mutation -> mutation names and VAF
+    Table$`Mutation_comb+VAF`[Table$Patient.ID == patient_id] <- paste(patient_mutations_vaf, collapse = " + ")
+  }
+}
+
+
+filename="output/Overview_Table_SC.xlsx"
+write.xlsx2(Table, filename,sheetName = "Overview", append=TRUE, overwrite=TRUE)
+
+rm(list = ls())
