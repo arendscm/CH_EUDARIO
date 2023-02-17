@@ -48,7 +48,6 @@ source("src/createMAF.R")
 source("src/global_functions_themes.R")
 
 ########   Mutational Analysis------------------------------------------------------------------------------
-
 ##PLOTs
 
 #Gene Mutation Prevalence Plot (plots number of gene-x-mutated patients)
@@ -79,7 +78,7 @@ prev.table  %>%
   geom_bar(stat="identity", width=0.6)+
   geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
   xlab("")+
-  scale_y_continuous(labels = percent,limits=c(0,0.3), position = "right")+
+  scale_y_continuous(labels = percent,limits=c(0,0.4), position = "right")+
   ylab("Gene Mutation Prevalence [%]") +
   my_theme() +
   theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35,face="italic")) +
@@ -107,8 +106,24 @@ id.brca_germline %>%
   table -> brca_status
 
 ##prevalence plot by BRCA status
-#prevalences in BRCA wildtype patients
+#How many BRCA+/- and CH+/-id.brca_germline_path%>%
+filter(brca_germline == 1)%>%
+  .$Patient.ID->ID.BRCA.path  # n() -> how many are BRCA mutated
+#not BRCA Muatated patients = 94-ID.BRCA.path
+df.filtered.c1d1%>%
+  filter(Patient.ID %in% ID.BRCA.path)%>%
+  filter(TVAF >= 0.01)%>%
+  filter(tag == "true")->mutations_in_BRCA_pos
+mutations_in_BRCA_pos$Patient.ID%>%
+  unique->No.ID.pos #how many are BRCA+ and CH+
+df.filtered.c1d1%>%
+  filter(!Patient.ID %in% ID.BRCA.path)%>%
+  filter(TVAF >= 0.01)%>%
+  filter(tag == "true")->mutations_in_BRCA_neg
+mutations_in_BRCA_neg$Patient.ID%>%
+  unique->No.ID.neg #how many are BRCA- and CH+
 
+#prevalences in BRCA wildtype patients
 n.brcamut <- id.brca_germline %>% 
   mutate(CH = ifelse(is.element(Patient.ID,id.ch$Patient.ID),1,0))%>%
   dplyr::select(brca_germline) %>% sum 
@@ -170,6 +185,69 @@ png("output/figures/mutprev-BRCA.png",width=6, height=6,units="in",res=500,type=
 p.mutprev
 dev.off()
 
+##prevalence plot by PATHOGENIC BRCA status
+load("data/interim/id.BRCA_path.RDATA")
+n.brcamut <- id.brca_germline_path %>% 
+  mutate(CH = ifelse(is.element(Patient.ID,id.ch$Patient.ID),1,0))%>%
+  dplyr::select(brca_germline) %>% sum 
+
+df.filtered.c1d1 %>% 
+  filter(tag == "true") %>%
+  filter(TVAF >= 0.01) %>%
+  left_join(.,id.brca_germline_path,by = "Patient.ID")%>%
+  filter(brca_germline==0)%>%
+  dplyr::select(Sample, Gene) %>% 
+  data.frame %>% 
+  unique %>% 
+  dplyr::select(Gene) %>% 
+  table %>% 
+  data.frame %>% 
+  mutate(prev = Freq/(nop-n.brcamut)) %>% 
+  arrange(prev) %>%
+  mutate(brca = 0) -> prev.table_brca0
+names(prev.table_brca0)<- c( "Gene","Freq","prev","brca")
+
+#prevalences in brca mutated patients
+
+df.filtered.c1d1 %>% 
+  filter(tag == "true") %>%
+  filter(TVAF >= 0.01) %>%
+  left_join(.,id.brca_germline_path,by = "Patient.ID")%>%
+  filter(brca_germline==1)%>%
+  dplyr::select(Sample, Gene) %>% 
+  data.frame %>% 
+  unique %>% 
+  dplyr::select(Gene) %>% 
+  table %>% 
+  data.frame %>% 
+  mutate(prev = Freq/n.brcamut) %>% 
+  arrange(prev) %>%
+  mutate(brca=1) -> prev.table_brca1
+names(prev.table_brca1)<- c( "Gene","Freq","prev","brca")
+
+full_join(prev.table_brca0,prev.table_brca1) %>% dplyr::select(Gene) %>% unique -> gene
+gene %>% left_join(prev.table_brca0) %>% mutate(prev = ifelse(is.na(prev),0,prev),brca=0)->brca0
+gene %>% left_join(prev.table_brca1)%>% mutate(prev = ifelse(is.na(prev),0,prev),brca=1)->brca1
+full_join(brca0,brca1)->prev.brca
+
+prev.brca  %>%
+  ggplot(aes(x=reorder(Gene, prev), y=prev, fill = factor(brca),group=brca)) +
+  geom_bar(stat="identity", width=0.6,position=position_dodge())+
+  #geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
+  xlab("")+
+  scale_y_continuous(labels = percent,limits=c(0,0.4), position = "right")+
+  ylab("Gene Mutation Prevalence [%]") +
+  my_theme() +
+  theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35,face="italic")) +
+  scale_fill_viridis(discrete=TRUE) +
+  scale_fill_manual(values = c("0" = "#486081", "1" = "#88acd4")) +
+  coord_flip() -> p.mutprev_path
+p.mutprev_path
+
+png("output/figures/mutprev-BRCA_path.png",width=6, height=6,units="in",res=500,type="cairo")
+p.mutprev_path
+dev.off()
+
 ###No of mutations
 df.filtered.c1d1%>%
   filter(tag == "true" & TVAF >= 0.01)->test
@@ -185,8 +263,9 @@ mutation_barplot <- mut_count %>%
 ggplot(mutation_barplot, aes(x = mutations, y = num_patients)) +
   geom_bar(stat = "identity", fill = "steelblue") +
   labs(x = "Number of Mutations", y = "Number of Patients")+
-  scale_x_continuous(limits = c(0, 9), breaks = 0:9)+
+  scale_x_continuous(limits = c(0.5, 8.5), breaks = 1:8)+
   ggtitle("No. of mutations per patient [>1%]")->p.nom
+p.nom
 
 png("output/figures/no of mutations.png",width=6, height=6,units="in",res=500,type="cairo")
 p.nom
@@ -202,16 +281,20 @@ group_by(Patient.ID) %>%
   filter(n() >= 3) %>%
   ungroup()
 
-patient_plots <- ggplot(test, aes(x = position, y = TVAF, fill = Gene)) +
+Comutations_all <-ggplot(test, aes(x = position, y = TVAF, fill = Gene)) +
   geom_bar(stat = "identity", position = "dodge") +
   facet_wrap(~Patient.ID, scales = "free_x") +
   labs(x= "",y = "TVAF", fill = "Genes")+
   theme(axis.text.x = element_blank(),
-          xlab = NULL,
-          axis.text.y = element_text(size = 8))+
-  scale_y_continuous(breaks = c(0.01, 0.1, 0.2),
-                     labels = c(0.01, 0.1, 0.2))+
-  scale_fill_brewer(palette = "Set3")
+        xlab = NULL,
+        axis.text.y = element_text(size = 8))+
+  scale_y_continuous(breaks = c(0.01, 0.1, 0.2, 0.3),
+                     labels = c(0.01, 0.1, 0.2, 0.3))
+#scale_fill_brewer(palette = "Set3")
+png("output/figures/comutation>3.png",width=6, height=6,units="in",res=500,type="cairo")
+Comutations_all
+dev.off()
+
 
 ##PPM1D Comutations: 
 df.filtered.c1d1%>%
@@ -241,20 +324,19 @@ test%>%
   filter(Patient.ID %in% Patient.ID.PPM1DCo)->test
 
 p.PPM1DCo<- ggplot(test, aes(x = position, y = TVAF, fill = Gene)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  facet_wrap(~Patient.ID, scales = "free_x") +
-  labs(x= "",y = "TVAF", fill = "Genes")+
-  theme(axis.text.x = element_blank(),
-        xlab = NULL,
-        axis.text.y = element_text(size = 8))+
-  scale_y_continuous(breaks = c(0.01, 0.1, 0.2, 0.3),
-                     labels = c(0.01, 0.1, 0.2, 0.3))+
-  scale_fill_brewer(palette = "Set3")
+geom_bar(stat = "identity", position = "dodge") +
+facet_wrap(~Patient.ID, scales = "free_x") +
+labs(x= "",y = "TVAF", fill = "Genes")+
+theme(axis.text.x = element_blank(),
+      xlab = NULL,
+      axis.text.y = element_text(size = 8))+
+scale_y_continuous(breaks = c(0.01, 0.1, 0.2, 0.3),
+                   labels = c(0.01, 0.1, 0.2, 0.3))
+#scale_fill_brewer(palette = "Set3")
 
 png("output/figures/PPM1D-Comutations.png",width=6, height=6,units="in",res=500,type="cairo")
 p.PPM1DCo
 dev.off()
-
 
 ########   GenVisar - waterfall plot #### 
 
@@ -264,7 +346,7 @@ library(GenVisR)
 
 ###turn df.filtered into MAF compatible format
 df.maf <- makeMAF(df.filtered.c1d1%>% filter(tag=="true"))
-#select(df.maf,Hugo_Symbol)%>%unique()->gene
+select(df.maf,Hugo_Symbol)%>%unique()->gene
 #save(gene,file="data/interim/gene_Waterfall.RDATA")
 #or
   load('data/interim/gene_Waterfall.RDATA')
