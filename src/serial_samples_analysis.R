@@ -89,6 +89,32 @@ png("output/figures/p.serial.png",width=6, height=4,units="in",res=500,type="cai
 p.serial
 dev.off()
 
+##Examples
+df.eot %>% 
+  filter(is.element(Patient.ID,c("4221010","4202008","4202016")))%>%
+  filter(n.material>1)%>%
+  filter(ExonicFunc != "synonymous SNV") %>%
+  filter(Func == "exonic"|Func == "splicing"|Func == "exonic;splicing") %>%
+  filter(AF<0.1)%>%
+  filter(snp==FALSE)%>%
+  filter(p.binom < -10) %>%
+  group_by(Patient.ID,position) %>%
+  mutate(maxVAF = max(TVAF)) %>%
+  data.frame()%>%
+  filter(maxVAF > 0.008) %>%
+  filter(TVAF < 0.38) %>%
+  filter(Gene!="CEBPA")%>%
+  ggplot() + 
+  geom_point(aes(x=Visite,y=TVAF,color=Gene,group=Patient.ID),size=1.5,na.rm=FALSE) + 
+  geom_line(aes(x=Visite,y=TVAF,group=position,color=Gene),size=1*1,na.rm=FALSE) + 
+  facet_wrap(~ Patient.ID, ncol=6, scales="free", dir="h") +
+  scale_y_continuous(limits = c(0,0.26)) +
+  labs(x="Timepoint",y="Variant allele frequency",colour="Mutated Gene") +
+  theme_minimal()-> p.serial
+
+png("output/figures/p.serial.png",width=6, height=3,units="in",res=500,type="cairo")
+p.serial
+dev.off()
 ###Serial samples by brca status (question: do dynamics unter PARP Inhb. differ depending on BRCA status?)
 source("src/brca_germline.R")
 df.eot %>% 
@@ -171,16 +197,17 @@ df.eot_rel %>%
 df.eot_rel %>% 
   filter(variable == "relvaf2") %>% 
   filter(is.element(Gene,c("CHEK2","PPM1D","DNMT3A","TP53","TET2","ASXL1")))%>%
+  mutate(DDR = ifelse(is.element(Gene,c("TP53","PPM1D","CHEK2")),"DDR","non-DDR"))%>%
   ggboxplot(., 
             x = "Gene",
             y = "value",
             #facet.by = "variable",
             # panel.labs = list(CHIP = c("positive","negative"), variable=c("Troponin","VCAM","hsCRP")), 
             combine = TRUE,
-            color = "Gene", 
-            #palette = viridis(5),
+            color = "DDR", 
+            palette = viridis(3),
             xlab = "Gene",
-            ylab = "n-fold change",
+            ylab = "n-fold change in VAF",
             title = "",
             width = 0.3,
             ylim = c(0,15),
@@ -192,7 +219,8 @@ df.eot_rel %>%
             add = c("jitter"))+
   theme_minimal() + 
   theme(axis.title.x = element_blank()) +
-  theme(legend.position = "none",
+  theme(#legend.position = "none",
+        axis.text.x = element_text(face="italic"),
         axis.title.y = element_text(face ="plain"),
         plot.title = element_text(hjust=0,face ="plain")) ->p.growth
 
