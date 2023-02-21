@@ -56,6 +56,13 @@ nop <- ids%>%
   select(.,Patient.ID)%>%
   unique()%>%nrow #number of patients
 
+df.filtered.c1d1%>%
+  filter(tag == "true" & TVAF >= 0.01)%>%
+  select(.,Patient.ID)%>%
+  unique()%>%
+  nrow()->no.chpos.pat
+
+
 hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3")
 
 df.filtered.c1d1 %>% 
@@ -93,6 +100,29 @@ dev.off()
 rm(prev.table)
 rm(p.mutprev)
 
+##Number of Mutations per Gene
+# create a summary data frame showing the number of mutations per gene
+mutation_counts <- df.filtered.c1d1%>%
+  filter(tag == "true" & TVAF >= 0.01)%>%
+  group_by(Gene) %>%
+  summarize(count = n())%>%
+  arrange(desc(count))
+
+# create a barplot of the mutation counts per gene
+ggplot(mutation_counts, aes(x = Gene, y = count, fill = "Mutation Counts")) +
+  geom_bar(stat = "identity", fill = "#486081") +
+  geom_text(aes(label = count), vjust = -0.5) + # add labels for mutation counts
+  #coord_flip() + # flip the coordinates to create a horizontal barplot
+  xlab("") +
+  ylab("Number of mutations") +
+  ggtitle("Mutation counts per gene") +
+  scale_x_discrete(limits = mutation_counts$Gene) + # set x-axis limits based on sorted order
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) -> p.no.mut
+
+png("output/figures/no.mut.png",width=6, height=6,units="in",res=500,type="cairo")
+p.no.mut
+dev.off()
+
 #CH prevalence by BRCA status
 source("src/brca_germline.R")
 
@@ -106,7 +136,9 @@ id.brca_germline %>%
   table -> brca_status
 
 ##prevalence plot by BRCA status
-#How many BRCA+/- and CH+/-id.brca_germline_path%>%
+load('data/interim/id.BRCA_path.RDATA')
+#How many BRCA+/- and CH+/-
+id.brca_germline_path%>%
 filter(brca_germline == 1)%>%
   .$Patient.ID->ID.BRCA.path  # n() -> how many are BRCA mutated
 #not BRCA Muatated patients = 94-ID.BRCA.path
@@ -121,7 +153,7 @@ df.filtered.c1d1%>%
   filter(TVAF >= 0.01)%>%
   filter(tag == "true")->mutations_in_BRCA_neg
 mutations_in_BRCA_neg$Patient.ID%>%
-  unique->No.ID.neg #how many are BRCA- and CH+
+  unique->No.ID.pos #how many are BRCA- and CH+
 
 #prevalences in BRCA wildtype patients
 n.brcamut <- id.brca_germline %>% 
@@ -186,7 +218,6 @@ p.mutprev
 dev.off()
 
 ##prevalence plot by PATHOGENIC BRCA status
-load("data/interim/id.BRCA_path.RDATA")
 n.brcamut <- id.brca_germline_path %>% 
   mutate(CH = ifelse(is.element(Patient.ID,id.ch$Patient.ID),1,0))%>%
   dplyr::select(brca_germline) %>% sum 
@@ -291,7 +322,7 @@ Comutations_all <-ggplot(test, aes(x = position, y = TVAF, fill = Gene)) +
   scale_y_continuous(breaks = c(0.01, 0.1, 0.2, 0.3),
                      labels = c(0.01, 0.1, 0.2, 0.3))
 #scale_fill_brewer(palette = "Set3")
-png("output/figures/comutation>3.png",width=6, height=6,units="in",res=500,type="cairo")
+png("output/figures/comutationover3.png",width=6, height=6,units="in",res=500,type="cairo")
 Comutations_all
 dev.off()
 
@@ -1212,4 +1243,41 @@ png("output/figures/p.rosechart.png",width=8, height=8,units="in",res=500,type="
 p.rosechart
 dev.off()
 
+#####Sample Availability
+Sample_registry <- read_excel("data/external/Sample Registry.xlsx", sheet = "Sample_registry_Overview", col_types = c("text", "numeric", "text", "text"))
+
+Sample_registry%>%
+  filter(Material== "wb" | Material == "cf")->Sample_registry_sq
+# Calculate sample counts
+sample_counts <- Sample_registry_sq %>% group_by(Timepoint, Material) %>% summarize(count = n())
+
+# Create plot all Samples
+ggplot(Sample_registry_sq, aes(x = Timepoint, y = as.numeric(factor(Patient)), color = Material)) + 
+  geom_point(position = position_dodge(width = 0.5), size = 1) + 
+  scale_color_manual(values = c("blue","red")) + 
+  labs(x = "Timepoints", y = "Patients") +
+  scale_y_continuous(breaks = seq_along(unique(Sample_registry$Patient)), labels = seq_along(unique(Sample_registry$Patient)))+
+  theme(axis.text.y = element_text(size = 5))+
+  ggtitle("Samples Sequenced") ->p.Samples_sq
+
+png("output/figures/p.Samples_sq.png",width=7, height=8,units="in",res=500,type="cairo")
+p.Samples_sq
+dev.off()
+
+##all Samples
+# Calculate sample counts
+sample_counts <- Sample_registry %>% group_by(Timepoint, Material) %>% summarize(count = n())
+
+# Create plot all Samples
+ggplot(Sample_registry, aes(x = Timepoint, y = as.numeric(factor(Patient)), color = Material)) + 
+  geom_point(position = position_dodge(width = 0.5), size = 1) + 
+  scale_color_manual(values = c("blue", "orange", "grey", "red")) + 
+  labs(x = "Timepoints", y = "Patients") +
+  scale_y_continuous(breaks = seq_along(unique(Sample_registry$Patient)), labels = seq_along(unique(Sample_registry$Patient)))+
+  theme(axis.text.y = element_text(size = 5))+
+  ggtitle("All Samples") ->p.Samples
+
+png("output/figures/p.Samples.png",width=7, height=8,units="in",res=500,type="cairo")
+p.Samples
+dev.off()
 

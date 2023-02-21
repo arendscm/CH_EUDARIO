@@ -42,7 +42,7 @@ source("src/global_functions_themes.R")
 ########   cf DNA analysis ####
 
 ##interesting gene groups
-variables <- c("Patient.ID","Sample_orig","mutID","position","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "GeneDetail", "ExonicFunc", "AAChange", "cytoBand","readDepth", "TR1", "TR1_plus", "TR1_minus", "TR2", "TR2_plus", "TR2_minus", "TVAF", "AF", "avsnp150","cosmic92_coding","snp","mutFreq","p.binom","n.mut","n.material","sum_cf","sum_wb","Material","tag")
+variables <- c("Patient.ID","Sample_orig","mutID","position","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "GeneDetail", "ExonicFunc", "AAChange", "cytoBand","readDepth", "TR1", "TR1_plus", "TR1_minus", "TR2", "TR2_plus", "TR2_minus", "TVAF", "AF", "avsnp150","cosmic92_coding","snp","mutFreq","p.binom","n.mut","n.material","sum_cf","sum_wb","Material","tag", "Patmut")
 ch_genes <- c("DNMT3A","TET2","ASXL1","CBL","CEBPA","GNB1","GNAS","IDH1","IDH2","JAK2","SF3B1","SRSF2","U2AF1;U2AF1L5")
 tp53_genes <- c("TP53")
 ppm1d_genes <- c("PPM1D")
@@ -74,10 +74,14 @@ df %>%
   mutate(cfID=paste(Patient.ID,position,sep="_")) -> df.cf_wb
 
 ##identity check via SNP
-left_join(df.cf,df.cf_wb,by="cfID") %>% 
+left_join(df.cf,df.cf_wb,by="cfID")%>%
   filter(snp.x == 1) %>% 
   ggplot(aes(x=Patient.ID.x,y=TVAF.x-TVAF.y)) +
-  geom_point()+coord_flip()
+  geom_point()+coord_flip()->p.cf.snp
+png("output/figures/p.cf.snp.png",width=5, height=7,units="in",res=500,type="cairo")
+p.cf.snp
+dev.off()
+
 
 #mismatch <- c("2-E2","2-E8","2-H8","2-A7")d
 
@@ -100,7 +104,7 @@ p.cfDNACor
 
 #Correlation Plot WB vs cfDNA
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
-  filter(tag.y == "true")%>%
+  filter(tag.y == "true")->test
   ggscatter(., 
             y = "TVAF.x", 
             x = "TVAF.y", 
@@ -112,6 +116,10 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
             xlab = "VAF cfDNA", 
             ylab = "VAF wholeblood")->p.cfDNACor
 p.cfDNACor
+
+png("output/figures/p.cf.wb.png",width=10, height=6,units="in",res=500,type="cairo")
+p.cfDNACor
+dev.off()
 
 
 ##Plot that shows VAF WB vs VAF ctDNA including color for group of mutation
@@ -147,7 +155,11 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   scale_color_viridis(discrete=TRUE)+
   ylab("whole blood VAF")+
   xlab("cfDNA VAF")+
-  theme_minimal()
+  theme_minimal()->p.cf.corr
+
+png("output/figures/p.cf.corr.all.png",width=10, height=6,units="in",res=500,type="cairo")
+p.cf.corr
+dev.off()
 
 ##apply filters
 ##Plot that shows VAF WB vs VAF ctDNA including color for group of mutation
@@ -183,7 +195,11 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   scale_color_viridis(discrete=TRUE)+
   ylab("whole blood VAF")+
   xlab("cfDNA VAF")+
-  theme_minimal()
+  theme_minimal()->p.cf.corr
+
+png("output/figures/p.cf.corr.filter1.png",width=10, height=6,units="in",res=500,type="cairo")
+p.cf.corr
+dev.off()
 
 
 ##TP53 mutations only 
@@ -213,7 +229,11 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   scale_color_viridis(discrete=TRUE)+
   scale_x_log10(limits=c(0.0005,0.5)) +
   scale_y_log10(limits=c(0.0005,0.5)) +
-  theme_minimal()
+  theme_minimal() -> p.TP53_cosmic_cf_wb
+
+png("output/figures/p.TP53_cosmic_cf_wb.png",width=10, height=6,units="in",res=500,type="cairo")
+p.TP53_cosmic_cf_wb
+dev.off()
 
 ##detecting BRCA mutations in cfDNA (this will later on also be important when looking for BRCA reversion mutations)
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
@@ -246,7 +266,7 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
 ##serial cf data exploration 2 timepoints cf only
 df %>% 
   filter(Material=="cf")%>%
-  filter(c1d1_cf==1&eot_cf==1)%>%
+  filter(c1d1_cf==1&eot_cf==1 & c7d1_cf == 0)%>%
   filter(n.material>=2)%>%
   filter(ExonicFunc != "synonymous SNV") %>%
   filter(Func == "exonic"|Func == "splicing"|Func == "exonic;splicing") %>%
@@ -269,13 +289,13 @@ df %>%
   geom_point(aes(x=Visite,y=TVAF,color=gene,group=Patient.ID),size=1.5,na.rm=FALSE) + 
   geom_line(aes(x=Visite,y=TVAF,group=position,color=gene),size=1*1,na.rm=FALSE) + 
   facet_wrap(~ Patient.ID, ncol=6, scales="free", dir="h") +
-  #scale_y_continuous(limits = c(0,0.26)) +
+  scale_y_continuous(limits = c(0,0.26)) +
   labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
   theme_minimal()-> p.cf.serial
 
-#png("output/figures/p.cf.serial.png",width=6, height=4,units="in",res=500,type="cairo")
-#p.cf.serial
-#dev.off()
+png("output/figures/p.cf.serial.png",width=6, height=4,units="in",res=500,type="cairo")
+p.cf.serial
+dev.off()
 
 ##preparation:find mutations that are present in both wb and cf
 df%>%  mutate(cfID=paste(Patient.ID,position,sep="_"))%>%
@@ -656,79 +676,6 @@ df %>%
 png("output/figures/p.cf.serial.png",width=6, height=4,units="in",res=500,type="cairo")
 p.cf.serial
 dev.off()
-
-
-
-
-########   BRCA and CH Status ####
-##gehört hier eigentlich nicht hin zu cf Analysis...
-#Ich denke wir sollten das in ein neuse Skript machen, was später durch TableOne ersetzt/erweitert wird
-#Create table with BRCA and CH Status
-for (id in ID)
-{#####CH status
-  print(id)
-  df.filtered%>%
-    filter(TVAF >= 0.005)%>%
-    filter(ID == id)%>%
-    filter(tag=="true")->CHposresults
-  #nur CH Mutationen
-  semi_join(CHposresults,CHgenes,by="Gene")->CHposresults
-  nrow(CHposresults)->a
-  if (a >= 1)
-  {b<-"1"}
-  if (a == 0)
-  {b<-"0"}
-  
-  ####BRCA status
-  df.BRCA%>%
-    filter(ID== id)->BRCApos
-  nrow(BRCApos)->c
-  if (c >= 1)
-  {d<-"1"}
-  if (c == 0)
-  {d<-"0"}
-  
-  tab2 <- matrix(c(id,b,a,d,c),ncol=5, byrow=TRUE)
-  colnames(tab) <- c('Patient.ID','CH','nrow(CH)','BRCA','nrow(BRCA)')
-  tab2 <- as.table(tab2)
-  rbind(tab,tab2)->tab
-  rm(a)
-  rm(b)
-  rm(c)
-  rm(d)
-  rm(id)
-}
-
-tab <- matrix(c(0,0,0,0,0),ncol=5, byrow=TRUE)
-colnames(tab) <- c('ID','CH','nrow(CH)','BRCA','nrow(BRCA)')
-tab <- as.table(tab)
-
-tbl_df(tab)->BRCAStatus
-BRCAStatus%>%
-  filter(CH != 0)->BRCAStatus
-#--> BRCAStatus = Table with BRCA and CH Status
-
-#Bind BRCA Status with filtered results
-as.numeric(BRCAStatus$ID)->BRCAStatus$ID
-right_join(BRCAStatus,filtered_results_OvCA_fix,by="ID")->df.filtered
-
-filteredmitBRCAStatus%>%
-  filter(tag=="true")%>%
-  filter(Visite=="C1D1")%>%
-  filter(CH =="1")%>%
-  filter(is.element(Gene,c("CHEK2","PPM1D","DNMT3A","TP53","TET2","ASXL1","ATM")))->a
-
-#Create Boxplot according to BRCA Status
-filteredmitBRCAStatus %>%
-  ggplot(., aes(x=Gene,y=TVAF, fill=BRCA)) + 
-  geom_boxplot()->p.cfboxplot1
-
-filteredmitBRCAStatus%>%
-  filter(is.element(Gene,c("PPM1D","DNMT3A","TP53","TET2")))->a
-
-a %>%
-  ggplot(., aes(x=Gene,y=TVAF, fill=BRCA)) + 
-  geom_boxplot()->p.cfboxplot1
 
 ########   Lolliplot for TP53 muts------------------------------------------------------------------------
 full_join(df.cf,df.cf_wb,by="cfID") %>% 

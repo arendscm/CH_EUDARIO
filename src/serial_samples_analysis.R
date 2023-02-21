@@ -10,6 +10,7 @@
 # Output: ...
 #
 # ==============================================================================
+
 ########   Dependencies   #####
 library(base)
 library(dplyr)
@@ -59,11 +60,28 @@ left_join(df.eot1,df.c1d0,by="ID") %>%
   geom_point()
 
 ##serial samples dynamics plot
+df%>% 
+  filter(!is.na(Patient.ID))%>%
+  filter(is.na(replicate))%>%
+  filter(c1d1_wb==1 & eot_wb==1)%>% 
+  filter(Material=="wb")%>%
+  filter(Visite == "C1D1")-> df.eot.c1
+df%>% 
+  filter(!is.na(Patient.ID))%>%
+  filter(is.na(replicate))%>%
+  filter(c1d1_wb==1 & eot_wb==1)%>% 
+  filter(Material=="wb")%>%
+  filter(Visite == "EOT")-> df.eot.eot
+semi_join(df.eot.c1,df.eot.eot, by = "Patmut")->df.eot
+df.eot$Patmut%>%
+  unique()->Patmut.serial
+
 df %>% 
   filter(!is.na(Patient.ID))%>%
   filter(is.na(replicate))%>%
   filter(c1d1_wb==1&eot_wb==1) %>% 
-  filter(Material=="wb")-> df.eot
+  filter(Material=="wb")%>%
+  filter(Patmut %in% Patmut.serial)-> df.eot
 
 df.eot %>% 
   filter(n.material>1)%>%
