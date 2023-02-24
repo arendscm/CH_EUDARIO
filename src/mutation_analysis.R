@@ -29,8 +29,7 @@ library(RColorBrewer)
 ########  Load preprocessed sequencing data
 #df <- read.csv('data/interim/mutationcalls.csv')
 load('data/interim/seqdata_filtered.RData')
-load('data/interim/filtered_results_c1d1_final.RDATA')
-df.filtered.c1d1 <-filtered_results_c1d1_final[is.na(filtered_results_c1d1_final$replicate),]
+df.filtered.c1d1 <-df.filtered.c1d1[is.na(df.filtered.c1d1$replicate),]
 
 ######## Get Patient ids
 source("src/ids.R")
@@ -55,7 +54,7 @@ df.filtered.c1d1%>%
   nrow()->no.chpos.pat
 
 
-hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3")
+hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3", "BRCA1", "BRCA2")
 
 ########   Gene Mutation Prevalence Plot (plots number of gene-x-mutated patients)  #####
 df.filtered.c1d1 %>% 

@@ -115,6 +115,8 @@ rm(mutID.hotspots)+
 rm(mutID.qual)+
 rm(mutID.tag.true)
 rm(ids)+
+rm(mm_hotspots)+
+rm(tempdata)+
 rm(df)
 
 save.image("data/interim/seqdata_filtered.RData")
