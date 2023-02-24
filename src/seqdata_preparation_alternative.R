@@ -21,10 +21,6 @@ library(reshape2)
 library(stringr)
 library(data.table)
 
-########   set working directory #####
-#setwd('H:/Meine Ablage')
-#setwd("C:/Users/maxar/Documents/AG Damm/EUDARIO/data_analysis/EUDARIO")
-
 ########   Data preparation:load variant calling table, Patient IDs, BRCA and tags-----------------------------------------------------------------
 data1 <- read.table('data/raw/Run1/variantcalls_P1346.csv',
                     header = TRUE, sep = "\t", stringsAsFactors = FALSE)
