@@ -1,4 +1,4 @@
-# ==============================================================================
+# ______________________________________________________________________________
 # Ovarian Cancer filtering Script
 #
 # Author: Max & Klara
@@ -9,8 +9,8 @@
 #
 # Output: plots...
 #
-# ==============================================================================
-########   Dependencies   #####
+# ______________________________________________________________________________
+###### Dependencies   #####
 library(base)
 library(dplyr)
 library(stringr)
@@ -21,12 +21,7 @@ library(ggplot2)
 library(ggthemes)
 library(viridis)
 library(ggpubr)
-
-
-########   set working directory #####
-#setwd('H:/Meine Ablage')
-#setwd("C:/Users/maxar/Documents/AG Damm/EUDARIO/data_analysis/EUDARIO")
-
+###### Data preparation ####
 ########  Load preprocessed sequencing data
 #df <- read.csv('data/interim/mutationcalls.csv')
 load('data/interim/seqdata.RData')
@@ -38,8 +33,6 @@ source("src/ids.R")
 ######## Functions and themes
 source("src/createMAF.R")
 source("src/global_functions_themes.R")
-
-########   cf DNA analysis ####
 
 ##interesting gene groups
 variables <- c("Patient.ID","Sample_orig","mutID","position","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "GeneDetail", "ExonicFunc", "AAChange", "cytoBand","readDepth", "TR1", "TR1_plus", "TR1_minus", "TR2", "TR2_plus", "TR2_minus", "TVAF", "AF", "avsnp150","cosmic92_coding","snp","mutFreq","p.binom","n.mut","n.material","sum_cf","sum_wb","Material","tag", "Patmut")
@@ -73,7 +66,7 @@ df %>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_")) -> df.cf_wb
 
-##identity check via SNP
+#####  identity check via SNP  ####
 left_join(df.cf,df.cf_wb,by="cfID")%>%
   filter(snp.x == 1) %>% 
   ggplot(aes(x=Patient.ID.x,y=TVAF.x-TVAF.y)) +
@@ -83,9 +76,7 @@ p.cf.snp
 dev.off()
 
 
-#mismatch <- c("2-E2","2-E8","2-H8","2-A7")d
-
-#Correlation Plot WB vs cfDNA all calls, only calls that are present in WB
+#####  Correlation Plot WB vs cfDNA all calls, only calls that are present in WB ####
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
   mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x))%>%
   filter(TVAF.y < 0.4&TVAF.x<0.4)%>%
@@ -102,7 +93,7 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
             xlab = "VAF cfDNA")->p.cfDNACor
 p.cfDNACor
 
-#Correlation Plot WB vs cfDNA
+#####  Correlation Plot WB vs cfDNA calls tagged true, only calls that are present in WB ####
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
   filter(tag.y == "true")->test
   ggscatter(., 
@@ -122,7 +113,7 @@ p.cfDNACor
 dev.off()
 
 
-##Plot that shows VAF WB vs VAF ctDNA including color for group of mutation
+#####  Plot that shows VAF WB vs VAF ctDNA including color for group of mutation - NO Filter####
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
   #filter(!is.element(Sample.x,mismatch))%>%
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
@@ -161,8 +152,7 @@ png("output/figures/p.cf.corr.all.png",width=10, height=6,units="in",res=500,typ
 p.cf.corr
 dev.off()
 
-##apply filters
-##Plot that shows VAF WB vs VAF ctDNA including color for group of mutation
+#####  Plot that shows VAF WB vs VAF ctDNA including color for group of mutation- Filter 1 ####
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
   #filter(!is.element(Sample.x,mismatch))%>%
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
@@ -179,7 +169,7 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   filter(ExonicFunc.x != "synonymous SNV")%>%
   filter(AF.x<0.1)%>%
   filter(snp.x==FALSE)%>%
-  #filter(TVAF.x>0.005|TVAF.y>0.005)%>%
+  filter(TVAF.x>0.005|TVAF.y>0.005)%>%
   filter(TR2.y > 19|TR2.x>19)%>%
   ggplot(aes(x=TVAF.x,y=TVAF.y,
              color=gene,
@@ -202,7 +192,7 @@ p.cf.corr
 dev.off()
 
 
-##TP53 mutations only 
+##### Correlation plot Filter 1 - TP53 mutations only 
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
   filter(!is.element(Patient.ID.x,c("4202008","4207011","4220002","4221004","4221032")))%>%
   #filter(!is.element(Sample.x,mismatch))%>%
@@ -235,7 +225,7 @@ png("output/figures/p.TP53_cosmic_cf_wb.png",width=10, height=6,units="in",res=5
 p.TP53_cosmic_cf_wb
 dev.off()
 
-##detecting BRCA mutations in cfDNA (this will later on also be important when looking for BRCA reversion mutations)
+#####  detecting BRCA mutations in cfDNA (this will later on also be important when looking for BRCA reversion mutations) ####
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
   #filter(!is.element(Sample.x,mismatch))%>%
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
@@ -263,11 +253,12 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   scale_y_log10(limits=c(0.0005,0.5)) +
   theme_minimal()
 
-##serial cf data exploration 2 timepoints cf only
+#####  serial cf data exploration 2 timepoints cf only ####
 df %>% 
   filter(Material=="cf")%>%
-  filter(c1d1_cf==1&eot_cf==1 & c7d1_cf == 0)%>%
-  filter(n.material>=2)%>%
+  filter(c1d1_cf==1&eot_cf==1)%>%  
+  #filter(c1d1_cf==1&eot_cf==1 & c7d1_cf == 0)%>% #for subsetting patients with 2 or 3 timepoints
+  filter(n.material>=2)%>% 
   filter(ExonicFunc != "synonymous SNV") %>%
   filter(Func == "exonic"|Func == "splicing"|Func == "exonic;splicing") %>%
   filter(AF<0.01)%>%
@@ -286,18 +277,18 @@ df %>%
          minpbinom < -8) %>%
   #filter(TVAF < 0.38) %>%
   ggplot() + 
-  geom_point(aes(x=Visite,y=TVAF,color=gene,group=Patient.ID),size=1.5,na.rm=FALSE) + 
-  geom_line(aes(x=Visite,y=TVAF,group=position,color=gene),size=1*1,na.rm=FALSE) + 
+  geom_point(aes(x=Visite,y=TVAF,color=gene,group=Patient.ID),size=1,na.rm=FALSE) + 
+  geom_line(aes(x=Visite,y=TVAF,group=position,color=gene),size=0.5,na.rm=FALSE) + 
   facet_wrap(~ Patient.ID, ncol=6, scales="free", dir="h") +
   scale_y_continuous(limits = c(0,0.26)) +
   labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
   theme_minimal()-> p.cf.serial
 
-png("output/figures/p.cf.serial.png",width=6, height=4,units="in",res=500,type="cairo")
+png("output/figures/p.cf.serial.png",width=10, height=5,units="in",res=500,type="cairo")
 p.cf.serial
 dev.off()
 
-##preparation:find mutations that are present in both wb and cf
+######   preparation: find mutations that are present in both wb and cf  #####
 df%>%  mutate(cfID=paste(Patient.ID,position,sep="_"))%>%
   filter(Material=="wb")%>%
   group_by(Visite)%>%
@@ -308,9 +299,9 @@ df %>%
   filter(c1d1_wb==1&eot_wb==1)%>%
   filter(Material=="cf")%>%
   group_by(Visite)%>%
-  mutate(wb=is.element(mutID,wb.mutID))
+  mutate(wb=is.element(mutID,wb.mutID))->cf.cfID
 
-##serial cf data exploration 2 timepoints cf and wb
+#####  serial cf data exploration 2 timepoints cf and wb - wb=full line ; plasma=dashed ####
 df %>% 
   filter(c1d1_cf==1&eot_cf==1)%>%
   filter(c1d1_wb==1&eot_wb==1)%>%
@@ -349,7 +340,7 @@ df %>%
   theme_minimal()-> p.cf.serial
 
 
-##facet by patient and material including "cf_only"
+#####  facet by patient and material including "cf_only" ####
 ##serial cf data exploration 2 timepoints cf and wb
 df %>% 
   filter(c1d1_cf==1&eot_cf==1)%>%
@@ -388,17 +379,22 @@ df %>%
          minpbinom < -10) %>%
   filter(maxVAF<0.4|minVAF<0.4) %>%
   filter(TVAF<0.35)%>%
+  filter(Patient.ID %in% c("4203009","4203002", "4221004", "4221006", "4221023"))%>%
   ggplot() + 
-  geom_point(aes(x=Visite,y=TVAF,color=gene,group=pat_material),size=2,na.rm=FALSE) + 
-  geom_line(aes(x=Visite,y=TVAF,group=pat_material_pos,color=gene),size=1*1,na.rm=FALSE) + 
+  geom_point(aes(x=Visite,y=TVAF,color=gene,group=pat_material),size=1,na.rm=FALSE) + 
+  geom_line(aes(x=Visite,y=TVAF,group=pat_material_pos,color=gene),size=0.5,na.rm=FALSE) + 
   facet_grid(Material ~ Patient.ID) +
   #scale_y_continuous(limits = c(0,0.26)) +
   labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
   scale_y_log10(limits=c(0.0005,0.5))+
   theme_minimal()-> p.cf.serial
 
+png("output/figures/p.cf.serial_cf,cf_only,wb_Patientsexample.png",width=6, height=4,units="in",res=500,type="cairo")
+p.cf.serial
+dev.off()
 
-##Test single patient by mutation
+
+#####  Test single patient by mutation ####
 df %>% 
   filter(Patient.ID=="4221010")%>%
   filter(c1d1_cf==1&eot_cf==1)%>%
@@ -479,7 +475,7 @@ df %>%
   theme_minimal()-> p.cf.serial
 
 
-##serial cf data exploration 2 timepoints cf and wb HRD only
+##### serial cf data exploration 2 timepoints cf and wb HRD only
 df %>% 
   filter(c1d1_cf==1&eot_cf==1)%>%
   filter(c1d1_wb==1&eot_wb==1)%>%
@@ -560,7 +556,7 @@ df %>%
   scale_y_log10(limits=c(0.0005,0.5))+
   theme_minimal()
 
-###just for fun: dynamics cfVAF vs wbVAF
+#####  just for fun: dynamics cfVAF vs wbVAF ####
 df %>% 
   filter(c1d1_cf==1&eot_cf==1)%>%
   filter(c1d1_wb==1&eot_wb==1)%>%
@@ -647,6 +643,7 @@ full_join(df1,df2,by=c("cfID_visit"))%>%
 df %>% 
   filter(Material=="cf")%>%
   filter(c1d1_cf==1&c7d1_cf==1&eot_cf==1)%>%
+  filter(Patient.ID %in% c("4203001", "4203004"))%>%
   filter(n.material==3)%>%
   filter(ExonicFunc != "synonymous SNV") %>%
   filter(Func == "exonic"|Func == "splicing"|Func == "exonic;splicing") %>%
@@ -663,21 +660,26 @@ df %>%
                                      ifelse(is.element(Gene,brca_genes),"BRCA","other")))))%>%
   filter(maxVAF > 0.005,
          maxTR2 > 7,
-         minpbinom < -8) %>%
+         minpbinom < -8)%>%
+  .$Patmut->Patmut.serial
+
+df%>%
+  filter(Patmut %in% Patmut.serial)%>%
+  filter(Material == "cf")%>%
   #filter(TVAF < 0.38) %>%
   ggplot() + 
-  geom_point(aes(x=Visite,y=TVAF,color=Gene,group=Patient.ID),size=1.5,na.rm=FALSE) + 
-  geom_line(aes(x=Visite,y=TVAF,group=position,color=Gene),size=1*1,na.rm=FALSE) + 
+  geom_point(aes(x=Visite,y=TVAF,color=Gene,group=Patient.ID),size=1,na.rm=FALSE) + 
+  geom_line(aes(x=Visite,y=TVAF,group=position,color=Gene),size=0.5,na.rm=FALSE) + 
   facet_wrap(~ Patient.ID, ncol=2, scales="free", dir="h") +
-  #scale_y_continuous(limits = c(0,0.26)) +
+  scale_y_continuous(limits = c(0,0.3)) +
   labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
-  theme_minimal()-> p.cf.serial
+  theme_minimal() -> p.cf.serial
 
-png("output/figures/p.cf.serial.png",width=6, height=4,units="in",res=500,type="cairo")
+png("output/figures/p.cf.serialC7.png",width=6, height=4,units="in",res=500,type="cairo")
 p.cf.serial
 dev.off()
 
-########   Lolliplot for TP53 muts------------------------------------------------------------------------
+#####  Lolliplot for TP53 muts------------------------------------------------------------------------
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
   filter(!is.element(Sample.x,mismatch))%>%
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
@@ -752,7 +754,7 @@ g3Lollipop(df.lolli%>%filter(Hugo_Symbol=="TP53"),
            save.svg.btn = FALSE,
            output.filename = "cbioportal_theme")
 
-########   Lolliplot for BRCA1/2 muts-----------------------------------------------------------------------
+#####  Lolliplot for BRCA1/2 muts-----------------------------------------------------------------------
 df.brca_germline%>%
   separate(.,AAChange,
            into=c("transcript1","rest"),

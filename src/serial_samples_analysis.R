@@ -1,16 +1,15 @@
-# ==============================================================================
+# ______________________________________________________________________________
 # Ovarian Cancer filtering Script
 #
 # Author: Max & Klara
 #
-# Description: Analysis of longitudinal data
+# Description: Analysis of longitudinal data - whole blood samples
 #
 # Input: seqdata, seqdata_filtered
 #
-# Output: ...
-#
-# ==============================================================================
-
+# Output: serial sample analysis
+# press ALT-O
+# ______________________________________________________________________________
 ########   Dependencies   #####
 library(base)
 library(dplyr)
@@ -25,10 +24,6 @@ library(reshape)
 library(ggpubr)
 library(maftools)
 
-########   set working directory #####
-#setwd('H:/Meine Ablage')
-#setwd("C:/Users/maxar/Documents/AG Damm/EUDARIO/data_analysis/EUDARIO")
-
 ########  Load preprocessed sequencing data
 #df <- read.csv('data/interim/mutationcalls.csv')
 load('data/interim/seqdata.RData')
@@ -40,9 +35,9 @@ source("src/ids.R")
 
 source("src/global_functions_themes.R")
 
-########   SERIAL SAMPLES ####
+########   SERIAL SAMPLES
 
-####  identity check via SNPs ####
+#### identity check via SNPs ####
 df %>% 
   filter(Visite=="EOT") %>% 
   mutate(ID=paste(Patient.ID,position))-> df.eot1
@@ -59,7 +54,7 @@ left_join(df.eot1,df.c1d0,by="ID") %>%
   ggplot(aes(x=factor(Patient.ID.x),y=TVAF.x-TVAF.y)) +
   geom_point()
 
-##serial samples dynamics plot
+#### serial samples preparation ####
 df%>% 
   filter(!is.na(Patient.ID))%>%
   filter(is.na(replicate))%>%
@@ -83,6 +78,7 @@ df %>%
   filter(Material=="wb")%>%
   filter(Patmut %in% Patmut.serial)-> df.eot
 
+#### serial samples dynamics plot ####
 df.eot %>% 
   filter(n.material>1)%>%
   filter(ExonicFunc != "synonymous SNV") %>%
@@ -94,16 +90,19 @@ df.eot %>%
   mutate(maxVAF = max(TVAF)) %>%
   data.frame()%>%
   filter(maxVAF > 0.008) %>%
-  filter(TVAF < 0.38) %>%
+  filter(TVAF < 0.27)%>%
+  .$Patmut ->Patmut.serial2  #some "partners" get kicked out here, rescue them back
+df.eot%>%
+  filter(Patmut %in% Patmut.serial2)%>%
   ggplot() + 
-  geom_point(aes(x=Visite,y=TVAF,color=Gene,group=Patient.ID),size=1.5,na.rm=FALSE) + 
-  geom_line(aes(x=Visite,y=TVAF,group=position,color=Gene),size=1*1,na.rm=FALSE) + 
+  geom_point(aes(x=Visite,y=TVAF,color=Gene,group=Patient.ID),size=1,na.rm=FALSE) + 
+  geom_line(aes(x=Visite,y=TVAF,group=position,color=Gene),size=0.5,na.rm=FALSE) + 
   facet_wrap(~ Patient.ID, ncol=6, scales="free", dir="h") +
-  scale_y_continuous(limits = c(0,0.26)) +
+  scale_y_continuous(limits = c(0,0.32)) +
   labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
   theme_minimal()-> p.serial
 
-png("output/figures/p.serial.png",width=6, height=4,units="in",res=500,type="cairo")
+png("output/figures/p.serial.png",width=12, height=8,units="in",res=500,type="cairo")
 p.serial
 dev.off()
 
@@ -123,17 +122,19 @@ df.eot %>%
   filter(TVAF < 0.38) %>%
   filter(Gene!="CEBPA")%>%
   ggplot() + 
-  geom_point(aes(x=Visite,y=TVAF,color=Gene,group=Patient.ID),size=1.5,na.rm=FALSE) + 
-  geom_line(aes(x=Visite,y=TVAF,group=position,color=Gene),size=1*1,na.rm=FALSE) + 
+  geom_point(aes(x=Visite,y=TVAF,color=Gene,group=Patient.ID),size=1 ,na.rm=FALSE) + 
+  geom_line(aes(x=Visite,y=TVAF,group=position,color=Gene),size=0.5,na.rm=FALSE) + 
   facet_wrap(~ Patient.ID, ncol=6, scales="free", dir="h") +
   scale_y_continuous(limits = c(0,0.26)) +
   labs(x="Timepoint",y="Variant allele frequency",colour="Mutated Gene") +
   theme_minimal()-> p.serial
 
-png("output/figures/p.serial.png",width=6, height=3,units="in",res=500,type="cairo")
+png("output/figures/p.serial_example.png",width=6, height=3,units="in",res=500,type="cairo")
 p.serial
 dev.off()
-###Serial samples by brca status (question: do dynamics unter PARP Inhb. differ depending on BRCA status?)
+
+
+#### Serial samples by brca status (question: do dynamics unter PARP Inhb. differ depending on BRCA status?) ####
 source("src/brca_germline.R")
 df.eot %>% 
   left_join(.,id.brca_germline,by = "Patient.ID")%>%
@@ -157,8 +158,7 @@ df.eot %>%
   labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
   theme_minimal()-> p.serial
 
-##TEST SERIAL SAMPLES relative >- for this we need the timedifference between d1 and eot
-
+#### TEST SERIAL SAMPLES relative -> for this we need the timedifference between d1 and eot ####
 df.eot %>% 
   filter(serial.mut>1)%>%
   filter(ExonicFunc != "synonymous SNV") %>%
@@ -173,7 +173,7 @@ df.eot %>%
   filter(TVAF < 0.37) %>%
   filter(Visite == "C1D1") %>%
   mutate(vaf_d1=TVAF) %>%
-  dplyr::select(Patient.ID,Gene,AAChange,position,vaf_d1)-> df.eotd1
+  dplyr::select(Patient.ID,Gene,AAChange,ExonicFunc,position,vaf_d1)-> df.eotd1
 
 df.eot %>% 
   filter(serial.mut>1)%>%
@@ -189,12 +189,13 @@ df.eot %>%
   filter(TVAF < 0.37) %>%
   filter(Visite == "EOT") %>%
   mutate(vaf_eot=TVAF) %>%
-  dplyr::select(Patient.ID,Gene,AAChange,position,vaf_eot)-> df.eoteot
+  dplyr::select(Patient.ID,Gene,AAChange,ExonicFunc,position,vaf_eot)-> df.eoteot
 
 df.eot_rel <- full_join(df.eotd1,df.eoteot) %>% mutate(relvaf1 = vaf_d1/vaf_d1,
                                                        relvaf2 = vaf_eot/vaf_d1) %>%
   melt.data.frame(measure.vars = c("relvaf1","relvaf2"))
 
+####   growth when first vaf set to value 1.0  ####
 df.eot_rel %>%  
   ggplot() + 
   geom_point(aes(x=variable,y=value,color=Gene,group=Patient.ID),size=1.5,na.rm=FALSE) + 
@@ -203,15 +204,36 @@ df.eot_rel %>%
   labs(x="Timepoint",y="log(VAF change)",colour="Mutated Gene") +
   theme_minimal()-> p.serial
 
+####   plot rel vaf2 as points according to gene ####
 df.eot_rel %>% 
   filter(variable == "relvaf2") %>% 
-  ggplot() + 
-  geom_point(aes(x=Gene,y=value,color=Gene,group=Patient.ID),size=1.5,na.rm=FALSE) + 
+  ggplot(aes(x = reorder(Gene, value, FUN = median), y = value, color = Gene, group = Patient.ID)) +
+  geom_point(size = 1.5, na.rm = FALSE) + 
   scale_y_log10() +
-  labs(x="Gene",y="log(VAF change)",colour="Mutated Gene") +
-  theme_graphicalabstract()-> p.serial
-#hier stimmt was noch nicht, im plot ist eine lila linie vertikal bei relvaf2
+  labs(x = "Gene", y = "log(VAF change)", colour = "Mutated Gene") +
+  theme_graphicalabstract() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 5))-> p.serial
 
+png("output/figures/p.relvaf2.png",width=6, height=4,units="in",res=500,type="cairo")
+p.serial
+dev.off()
+
+####   plot rel vaf2 as points according to gene, coloured in ExonicFunc (frameshift,...) ####
+df.eot_rel %>% 
+  filter(is.element(Gene,c("CHEK2","PPM1D","DNMT3A","TP53","TET2", "ATM")))%>%
+  filter(variable == "relvaf2") %>% 
+  ggplot(aes(x = reorder(Gene, value, FUN = median), y = value, color = ExonicFunc, group = Patient.ID)) +
+  geom_point(size = 1.5, na.rm = FALSE) + 
+  scale_y_log10() +
+  labs(x = "Gene", y = "log(VAF change)", colour = "Mutated Gene") +
+  theme_graphicalabstract() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))-> p.serial
+
+png("output/figures/p.relvaf_ExonicFunc.png",width=6, height=4,units="in",res=500,type="cairo")
+p.serial
+dev.off()
+
+####   Boxplot Growth according to DDR/non DDR ####
 df.eot_rel %>% 
   filter(variable == "relvaf2") %>% 
   filter(is.element(Gene,c("CHEK2","PPM1D","DNMT3A","TP53","TET2","ASXL1")))%>%
@@ -246,5 +268,33 @@ png("output/figures/growth.png",width=6, height=4,units="in",res=500,type="cairo
 p.growth
 dev.off()
 
+
+rm(list=ls())
+
+#### Print serial plot for every patient ####
+for (current_patient in EOT_ids)
+{print(current_patient)
+  Dynamicallpat%>%
+    filter(Patient.ID == current_patient)->Dynamic
+  ###Plot generieren
+  Dynamic%>%
+    ggplot(aes(y=TVAF, x=Visite, colour=Gene, group=Patmut))+
+    geom_point(size=5,alpha=0.3)+
+    geom_line(size=1)+
+    theme_minimal()+
+    scale_y_continuous(limits=c(0,0.125))+
+    labs(title="Clone Dynamics")->p.C1D1EOTdynamicpat1
+  ### create image file
+  png(paste0(current_patient,"_C1D1EOT.png"),
+      width=10,
+      height=6,
+      units="in",
+      res=500,
+      type="cairo")
+  ### plot image to file
+  print(p.C1D1EOTdynamicpat1)
+  ### close file again
+  dev.off()
+}
 
 rm(list=ls())

@@ -19,6 +19,8 @@ library(reshape)
 library(tidyr)
 library(readxl)
 library(reshape2)
+library(ggplot2)
+library(RColorBrewer)
 
 ########   set working directory #####
 #setwd('H:/Meine Ablage')
@@ -27,6 +29,7 @@ library(reshape2)
 ########  Load preprocessed sequencing data
 #df <- read.csv('data/interim/mutationcalls.csv')
 load('data/interim/seqdata.RData')
+SC_registry <- read_excel("data/external/SC_registry.xlsx")
 
 ###include only new samples = those with Patient.ID = NA
 df -> df.orig
@@ -114,8 +117,11 @@ write.xlsx(df.filtered,filename,sheetName = "filtered_results",append=TRUE)
 
 ################### Overview table ####
 #works once tags are included in seqdata preparation
+left_join(df.filtered,SC_registry, by="Sample_orig")%>%
+  mutate(Patient.ID = Patient.ID.y)->df.filtered
 df.filtered%>%
   filter(tag== "true")->Patresults
+
 
 
 ch_genes <- c("DNMT3A","TET2","ASXL1","PPM1D","CBL","CEBPA","GNB1","GNAS","IDH1","IDH2","JAK2","SF3B1","SRSF2","U2AF1;U2AF1L5")
@@ -124,7 +130,7 @@ hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM17
 
 
 ##Patient.ID
-select(filtered_results_SC,Patient.ID)%>%
+select(df.filtered,Patient.ID)%>%
   unique()->Patient.ID
 
 
@@ -135,11 +141,13 @@ Patresults%>%
   filter(TVAF >= 0.02)->Patresults2
 Patresults%>%
   filter(TVAF >= 0.1)->Patresults10
+Patresults%>%
+  filter(TVAF >= 0.01)->Patresults1
+
 
 #Create a new dataframe with patient IDs as the first column
 Table <- Patient.ID %>%
-  rename(Patient.ID = "Patient.ID") %>%
-  mutate(CH = 0, `VAF >10%` = 0, `VAF >5%` = 0, `VAF >2%` = 0,
+  mutate(CH = 0, `VAF >10%` = 0, `VAF >5%` = 0, `VAF >2%` = 0,`VAF >1%` = 0,
          `Mutation_comb+VAF`= NA)
 
 
@@ -177,6 +185,13 @@ patient_ids_2 <- unique(Patresults2$Patient.ID)
 # Compare the patient_ids from Table with the patient_ids in Patresults5
 Table$`VAF >2%` <- ifelse(Table$Patient.ID %in% patient_ids_2, 1, Table$`VAF >2%`)
 
+## Mutation with VAF over 1%
+# Get the unique patient ids from the "Patresults2" table
+patient_ids_1 <- unique(Patresults1$Patient.ID)
+
+# Compare the patient_ids from Table with the patient_ids in Patresults5
+Table$`VAF >1%` <- ifelse(Table$Patient.ID %in% patient_ids_1, 1, Table$`VAF >1%`)
+
 Table[is.na(Table)] <- 0
 
 
@@ -203,4 +218,32 @@ for (patient_id in ID) {
 filename="output/Overview_Table_SC.xlsx"
 write.xlsx2(Table, filename,sheetName = "Overview", append=TRUE, overwrite=TRUE)
 
-rm(list = ls())
+tempdata <-ls()
+rm(list=tempdata[tempdata != "df.filtered"])
+rm(tempdata)
+
+##Comutational plots
+###Comutational plots
+df.filtered%>%
+  filter(tag == "true")->test
+
+test<-test%>%
+  group_by(Patient.ID) %>%
+  filter(n() >= 2) %>%
+  ungroup()
+
+Comutations_all <-ggplot(test, aes(x = position, y = TVAF, fill = Gene)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~Patient.ID, scales = "free_x", ncol = 6) +
+  labs(x= "",y = "TVAF", fill = "Genes")+
+  theme(axis.text.x = element_blank(),
+        xlab = NULL,
+        axis.text.y = element_text(size = 8))+
+  scale_y_continuous(breaks = c(0.01, 0.1, 0.2, 0.3),
+                     labels = c(0.01, 0.1, 0.2, 0.3))
+  #scale_fill_brewer(palette = "PuBuGn")
+Comutations_all
+
+png("output/figures/comutationsSC.png",width=15, height=5,units="in",res=500,type="cairo")
+Comutations_all
+dev.off()

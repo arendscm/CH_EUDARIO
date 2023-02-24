@@ -36,7 +36,7 @@ select(df,Patient.ID)%>%
 df.filtered%>%
   filter(Visite == "C1D1")%>%
   filter(TVAF >= 0.005)%>%
-  filter(cf == "0")%>%
+  filter(Material == "wb")%>%
   filter(tag == "true")%>%
   filter(Patient.ID != 0)->Patresults
 Patresults%>%
@@ -44,13 +44,14 @@ Patresults%>%
 Patresults%>%
   filter(TVAF >= 0.02)->Patresults2
 Patresults%>%
+  filter(TVAF >= 0.01)->Patresults1
+Patresults%>%
   filter(TVAF >= 0.1)->Patresults10
 
 #Create a new dataframe with patient IDs as the first column
-Table <- Patient.ID %>%
-  rename(Patient.ID == "Patient.ID") %>%
-  mutate(CH = 0, `VAF >10%` = 0, `VAF >5%` = 0, `VAF >2%` = 0, `only cf-TP53`=0,
-         `Mutation_comb+VAF`= NA)
+Patient.ID%>%
+  mutate(CH = 0, `VAF >10%` = 0, `VAF >5%` = 0, `VAF >2%` = 0,`VAF >1%` = 0, `only cf-TP53`=0,
+         `Mutation_comb+VAF`= NA)->Table
 ##CH genes ->list of ch_genes
 # Add columns for each gene, with initial values of 0
   for (gene in ch_genes) {
@@ -105,12 +106,22 @@ patient_ids_2 <- unique(Patresults2$Patient.ID)
 # Compare the patient_ids from Table with the patient_ids in Patresults5
 Table$`VAF >2%` <- ifelse(Table$Patient.ID %in% patient_ids_2, 1, Table$`VAF >2%`)
 
+## Mutation with VAF over 1%
+# Get the unique patient ids from the "Patresults1" table
+patient_ids_1<- unique(Patresults1$Patient.ID)
 
+# Compare the patient_ids from Table with the patient_ids in Patresults5
+Table$`VAF >1%` <- ifelse(Table$Patient.ID %in% patient_ids_1, 1, Table$`VAF >1%`)
 
 Table[is.na(Table)] <- 0
 
 genes_total <- c(ch_genes,hrd_genes)
 
+#Patient.ID list
+select(df,Patient.ID)%>%
+  filter(Patient.ID != 0)%>%
+  unique()->Patient.ID
+Patient.ID$Patient.ID->ID
 ##Mutation comb with VAF
 for (patient_id in ID) {
   # only Patient ID results
@@ -128,6 +139,7 @@ for (patient_id in ID) {
 }
 
 #il6snp
+id.il6$Patient.ID<-as.character(Patient.ID)
 left_join(Table,id.il6, by="Patient.ID")->Table
 #BRCA_germine
 left_join(Table,id.brca_germline, by="Patient.ID")->Table
@@ -145,15 +157,6 @@ patient_ids_cf_TP53 <- unique(cf_TP53$Patient.ID)
 
 # Compare the patient_ids from Table with the patient_ids in cf_TP53
 Table$`only cf-TP53` <- ifelse(Table$Patient.ID %in% patient_ids_cf_TP53, 1, Table$`only cf-TP53`)
-
-
-#ids
-ids%>%
-  filter(Visite == "C1D1")%>%
-  select(.,Patient.ID,`Internal Pat ID`)->ids_C1D1
-left_join(Table, ids_C1D1,by="Patient.ID")->Table
-
-
 
 filename="output/Overview_Table.xlsx"
 file.remove("output/Overview_Table.xlsx")

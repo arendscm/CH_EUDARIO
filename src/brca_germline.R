@@ -15,7 +15,7 @@ library(dplyr)
 library(base)
 library(reshape)
 library(tidyr)
-
+library(stringr)
 
 ########   set working directory #####
 #setwd('H:/Meine Ablage')
@@ -35,17 +35,18 @@ brcaexchange <- read.table("data/external/BRCA_Exchange_Liste_shortend.csv",sep=
 ##Determine BRCA status
 df %>% 
   filter(!is.na(Patient.ID))%>%
+  filter(is.na(replicate))%>%
   filter(Visite == "C1D1")%>%
   filter(Material == "wb")%>%
   filter(Gene == "BRCA1"|Gene =="BRCA2") %>%
   filter(TVAF > 0.25) %>%
   filter(ExonicFunc!= "synonymous SNV") %>%
-  filter(AF < 0.05) %>%
+  filter(AF < 0.05)%>%
   left_join(., brcaexchange, by="Genomic_Coordinate_hg38") %>%
   filter(is.element(BRCA.Exchange_Pathogenicity_expert,c("Pathogenic","Not Yet Reviewed"))|
            (is.na(BRCA.Exchange_Pathogenicity_expert)&
               (is.element(ExonicFunc,c("frameshift substitution","stopgain"))|
-                 is.element(Func,c("splicing","exonic;splicing")))))%>% ## all variants that are classified as pathogenic by expert panel or not yet reviewed, or that have no match in BRCA exchange but are truncating
+                 is.element(Func,c("splicing","exonic;splicing")))))%>%## all variants that are classified as pathogenic by expert panel or not yet reviewed, or that have no match in BRCA exchange but are truncating
   filter(!str_detect(BRCA.Exchange_Clinical_Significance_ClinVar,"Benign")|is.na(BRCA.Exchange_Clinical_Significance_ClinVar))-> df.brca_germline
 
 ids %>% 
@@ -79,3 +80,4 @@ rm(df)
 rm(ids)
 
 save.image("data/interim/brca.RData")
+
