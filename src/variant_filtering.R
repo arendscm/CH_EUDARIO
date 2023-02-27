@@ -1,4 +1,4 @@
-# ==============================================================================
+# ______________________________________________________________________________
 # Ovarian Cancer filtering Script
 #
 # Author: Max & Klara
@@ -9,7 +9,7 @@
 #
 # Output: Excel list of filtered results
 #
-# ==============================================================================
+# ______________________________________________________________________________
 ########   Dependencies   #####
 library(base)
 library(dplyr)
@@ -20,9 +20,6 @@ library(tidyr)
 library(readxl)
 library(reshape2)
 
-########   set working directory #####
-#setwd('H:/Meine Ablage')
-#setwd("C:/Users/maxar/Documents/AG Damm/EUDARIO/data_analysis/EUDARIO")
 
 ########  Load preprocessed sequencing data
 #df <- read.csv('data/interim/mutationcalls.csv')
@@ -123,3 +120,27 @@ save.image("data/interim/seqdata_filtered.RData")
 
 filename <- paste("output/filtered_results_c1d1_",Sys.Date(),".xlsx",sep="")
 write.xlsx(df.filtered.c1d1,filename,sheetName = "filtered_results",append=TRUE)
+
+
+#synonymus SNVs after filtering:
+synSNV <-c("OvCA_73_cf_C1D1_chr13_28034173_28034173_G_T",
+           "OvCA_90_cf_C1D1_chr1_43349309_43349309_C_T","OvCA_90_cf_C1D1_chr4_54723606_54723606_C_T",
+           "5-G7_chr9_136503195_136503195_G_A","5-H8_chr9_136503195_136503195_G_A",
+           "6-A1_chr9_136503195_136503195_G_A","cf1-D2_chr21_43093138_43093138_C_T",
+           "OvCA_23_cf_C1D1_chrX_134415108_134415108_A_G", "OvCA_51_cf_C1D1_chr9_136503195_136503195_G_A",
+           "OvCA_51_cf_EOT_chr9_136503195_136503195_G_A","OvCA_51_WB_C1D1_chr9_136503195_136503195_G_A",
+           "OvCA_55_cf_C1D1_chr4_105276129_105276129_T_A","OvCA_64_cf_C1D1_chr9_136496554_136496554_C_T",
+           "OvCA_64_cf_C1D1_chr9_136496566_136496566_C_T","OvCA_65_cf_EOT_chr4_105236417_105236417_A_T",
+           "OvCA_78_cf_EOT_chr9_136503195_136503195_G_A","OvCA_91_cf_C1D1_chr11_119278183_119278183_C_T")
+
+
+mutID.freq%>%
+  filter(mutID %in% synSNV)->test
+#mutID.CHIP.qual -> 17
+#mutID.count ->8
+#mutID.freq ->16
+#mutID.hotspots ->17
+#mutID.qual ->17
+
+
+
