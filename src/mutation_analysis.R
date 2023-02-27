@@ -10,7 +10,7 @@
 # Output: Excel list of filtered results, plots, ...
 # press ALT-O
 # ______________________________________________________________________________
-########   Dependencies   ####
+########   Dependencies and load data  ####
 library(base)
 library(dplyr)
 library(stringr)
@@ -55,11 +55,14 @@ df.filtered.c1d1%>%
 
 
 hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3", "BRCA1", "BRCA2")
+ch_genes <- c("DNMT3A", "TET2" ,  "JAK2" ,  "ASXL1" , "SF3B1" , "SRSF2" , "TP53"  , "U2AF1" , "PPM1D" , "CBL"  ,  "IDH1"  , "IDH2"  , "BCOR"  , "BCORL1", "EZH2" ,  "RAD21" , "STAG2" , "CHEK2" , "GNAS"  , "GNB1"  , "ATM"   , "KRAS" ,  "NRAS",   "WT1" ,   "MYD88" ,
+              "STAT3" , "BRCC3" , "CALR"  , "CEBPA" , "CSF3R" , "ETV6"  , "FLT3" ,  "GATA2" , "GATA1" , "KIT" ,   "MPL" ,   "NPM1" ,  "PTPN11" ,"RUNX1" , "SETBP1" ,"NF1"  ,  "PHF6")
 
 ########   Gene Mutation Prevalence Plot (plots number of gene-x-mutated patients)  #####
 df.filtered.c1d1 %>% 
   filter(tag == "true") %>%
   filter(TVAF >= 0.01) %>%
+  #filter(Gene %in% ch_genes)%>%  #only CH panel, when we say: this is the prevalence plot for CH in these patients
   dplyr::select(Sample, Gene) %>% 
   data.frame %>% 
   unique %>% 
@@ -77,7 +80,7 @@ prev.table  %>%
   geom_bar(stat="identity", width=0.6)+
   geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
   xlab("")+
-  scale_y_continuous(labels = percent,limits=c(0,0.4), position = "right")+
+  scale_y_continuous(labels = percent,limits=c(0,0.35), position = "right")+
   ylab("Gene Mutation Prevalence [%]") +
   my_theme() +
   theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35,face="italic")) +

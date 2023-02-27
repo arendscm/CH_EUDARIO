@@ -46,11 +46,13 @@ hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM17
 df %>% 
   filter(Material=="cf") %>% 
   filter(Visite == "C1D1")%>%
+  filter(is.na(replicate))%>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_"))-> df.cf
 df %>% 
   filter(Material=="wb") %>% 
   filter(Visite == "C1D1")%>%
+  filter(is.na(replicate))%>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_"))-> df.wb
 
@@ -225,7 +227,7 @@ png("output/figures/p.TP53_cosmic_cf_wb.png",width=10, height=6,units="in",res=5
 p.TP53_cosmic_cf_wb
 dev.off()
 
-#####  detecting BRCA mutations in cfDNA (this will later on also be important when looking for BRCA reversion mutations) ####
+#####  detecting BRCA mutations in cfDNA (this will later on also be important when looking for BRCA reversion mutations)####
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
   #filter(!is.element(Sample.x,mismatch))%>%
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
@@ -253,7 +255,46 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   scale_y_log10(limits=c(0.0005,0.5)) +
   theme_minimal()
 
-#####  serial cf data exploration 2 timepoints cf only ####
+#####  Determine Overlap CH and HRD in plasma samples ####
+df.filtered%>%
+  filter(Material=="cf") %>% 
+  filter(Visite == "C1D1")%>%
+  filter(is.na(replicate))%>%
+  filter(TVAF >= 0.01 & TVAF <= 0.3)->df.filtered.cf
+
+nop<-df.filtered.cf%>%
+  select(.,Patient.ID)%>%
+  unique()
+source("src/global_functions_themes.R")
+
+df.filtered.cf %>% 
+  #filter(Gene %in% ch_genes)%>%  #only CH panel, when we say: this is the prevalence plot for CH in these patients
+  dplyr::select(Sample, Gene) %>% 
+  data.frame %>% 
+  unique %>% 
+  dplyr::select(Gene) %>% 
+  table %>% 
+  data.frame %>% 
+  filter(Freq >0) %>% 
+  mutate(prev = Freq/nop) %>% 
+  arrange(prev) -> prev.table
+names(prev.table)<- c( "Gene","Freq","prev")
+
+prev.table  %>%
+  mutate(HRD = ifelse(is.element(Gene,hrd_genes),"HRD","non HRD"))%>%
+  ggplot(aes(x=reorder(Gene, Freq), y=prev, fill=HRD)) +
+  geom_bar(stat="identity", width=0.6)+
+  geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
+  xlab("")+
+  scale_y_continuous(labels = percent,limits=c(0,0.35), position = "right")+
+  ylab("Gene Mutation Prevalence [%]") +
+  my_theme() +
+  theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35,face="italic")) +
+  coord_flip() + 
+  scale_fill_manual(values = c("non HRD" = "#486081", "HRD" = "#88acd4")) -> p.mutprev
+p.mutprev
+
+###### serial cf data exploration 2 timepoints cf only ####
 df %>% 
   filter(Material=="cf")%>%
   filter(c1d1_cf==1&eot_cf==1)%>%  
@@ -288,7 +329,7 @@ png("output/figures/p.cf.serial.png",width=10, height=5,units="in",res=500,type=
 p.cf.serial
 dev.off()
 
-######   preparation: find mutations that are present in both wb and cf  #####
+#####  preparation: find mutations that are present in both wb and cf  #####
 df%>%  mutate(cfID=paste(Patient.ID,position,sep="_"))%>%
   filter(Material=="wb")%>%
   group_by(Visite)%>%
@@ -821,3 +862,22 @@ g3Lollipop(df.lolli%>%filter(Hugo_Symbol=="BRCA2"),
            save.png.btn	= FALSE,
            save.svg.btn = FALSE,
            output.filename = "cbioportal_theme")
+
+#####  how many counts per sample ####
+df.filtered%>%
+  filter(Material == "cf")-> test
+  
+# Count the number of mutations for each sample
+sample_counts <- test %>% group_by(Sample) %>% summarise(count = n())
+
+# Count the number of samples with each count of mutations
+no_counts <- sample_counts %>% group_by(count) %>% summarise(num_samples = n())
+
+ggplot(no_counts, aes(x=count, y=num_samples))+
+  geom_bar(stat = "identity", fill = "#486081") +
+  geom_text(aes(label = count), vjust = -0.5)
+
+sample_counts%>%
+  filter(count >= 30)%>%
+  mutate(Sample_orig = Sample)%>%
+  left_join(.,ids,by = "Sample_orig")->test2 #candidates for repetition
