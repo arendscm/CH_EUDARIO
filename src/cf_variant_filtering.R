@@ -67,7 +67,7 @@ df %>%
 ## mutation call frequency criteria
 df %>% 
   filter(AF<0.05) %>%    #filtert alle h?ufig in Datenbanken (=seq errors) gelisteten mutation raus
-  filter((mutFreq < 0.1*n.lane)&((p.binom<= -10)&med.vaf < 0.44))%>% #filtert nach Häufigkeit und binomialer Wahrscheinlichkeit
+  filter((mutFreq < max(0.05*n.lane,5))&((p.binom<= -10)&med.vaf < 0.44))%>% #filtert nach Häufigkeit und binomialer Wahrscheinlichkeit
   dplyr::select(mutID) -> mutID.freq
 
 # rescue ASXL1 dupG mutations <- this step is no longer needed, when we use p.binom 
@@ -82,7 +82,7 @@ df %>%
   filter(str_detect(cosmic92_coding,"ovary")) %>%
   filter(FisherScore < 20) %>% 
   filter(StrandBalance2 != 1 & StrandBalance2 != 0) %>%     #filter out mutations only seen on one strand
-  filter(TR2 > 14) %>%
+  filter(TR2 > 15) %>%
   filter(TVAF >0.001) %>%
   filter(!snp)%>%
   dplyr::select(mutID)-> mutID.cosmic
@@ -103,7 +103,7 @@ inner_join(mutID.func,mutID.count) %>%
   mutate(cosmic_ovary = str_detect(cosmic92_coding,"ovary"))%>%
   mutate(HRD = is.element(Gene,hrd_genes))-> df.filtered_cf 
 
-
+##hier kann man noch weiter filtern, hohe mutfreqs rausschmeißen, nur HRD Gene anschauen etc. und dann sollte es erstmal eine überschaubare menge an mutationen sein. Finetuning müssen wir dann noch schauen
 
 rm(mutID.CHIP)+
 rm(mutID.CHIP.qual)+
@@ -118,7 +118,7 @@ rm(mm_hotspots)+
 rm(tempdata)+
 rm(df)
 
-save.image("data/interim/seqdata_filtered.RData")
+save.image("data/interim/seqdata_filtered_cf.RData")
 
 filename <- paste("output/filtered_results_c1d1_cf_",Sys.Date(),".xlsx",sep="")
 write.xlsx(df.filtered_cf,filename,sheetName = "filtered_results",append=TRUE)
