@@ -29,7 +29,6 @@ library(RColorBrewer)
 ########  Load preprocessed sequencing data
 #df <- read.csv('data/interim/mutationcalls.csv')
 load('data/interim/seqdata_filtered.RData')
-df.filtered.c1d1 <-df.filtered.c1d1[is.na(df.filtered.c1d1$replicate),]
 
 ######## Get Patient ids
 source("src/ids.R")
@@ -62,7 +61,8 @@ ch_genes <- c("DNMT3A", "TET2" ,  "JAK2" ,  "ASXL1" , "SF3B1" , "SRSF2" , "TP53"
 df.filtered.c1d1 %>% 
   filter(tag == "true") %>%
   filter(TVAF >= 0.01) %>%
-  filter(Gene %in% hrd_genes)%>%  #only CH panel, when we say: this is the prevalence plot for CH in these patients
+  filter(Gene %in% hrd_genes)%>%  #only HRD panel, when we say: this is the prevalence plot for HRD in these patients
+  #filter(Gene %in% ch_genes)%>%  #only CH panel, when we say: this is the prevalence plot for CH in these patient
   dplyr::select(Sample, Gene) %>% 
   data.frame %>% 
   unique %>% 
