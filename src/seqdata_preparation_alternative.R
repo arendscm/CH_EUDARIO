@@ -35,14 +35,16 @@ data3 <- read.table('data/raw/Run3/variantcalls_P1803.csv',
 
 #load run and lane data
 lanes <- read_excel("data/external/Sample-Run-Assignment.xlsx")%>%
-  mutate(lane = paste(Run,Lane,sep="_"))
-
+  mutate(lane = paste(Run,Lane,sep="_"))%>%
+  group_by(lane) %>%
+  mutate(n.lane = n())%>%
+  data.frame
 
 # load tags 
 #tags <- read.table('data/external/tags_run1_run2.csv',
 #                   header = TRUE, sep = ";", stringsAsFactors = FALSE)
 load("data/interim/tags.RDATA")
-tags%>%   ##hat das ein Grund warum die rausgeschmissen werden?
+tags%>%   ##hat das ein Grund warum die rausgeschmissen werden? > ja die konnte er nicht zuordnen glaub ich
   filter(!is.element(mutID,c("1-G7_chr17_7674872_7674872_T_C","3-C1_chr17_60663388_60663388_C_T","3-F7_chr17_7674220_7674220_C_T")))-> tags
 
 ##Patient ID table that identifies Sample IDs with Patient ID and timepoints
@@ -90,10 +92,14 @@ data %>%
     data.frame -> tmp
 
 #clear memory space
-rm(list(data1,data2,data3,data))
+rm(data1)
+rm(data2)
+rm(data3)
+rm(data)
 
 #modify/add columns needed for filtering
 df <- data.frame(tmp) %>% 
+  filter(is.na(replicate))%>% #filter out replicates 
   full_join(.,tags) %>% #join with list of tags from manual inspection in igv
   mutate(tag = as.factor(tag)) %>%
   unique %>%
@@ -103,6 +109,9 @@ df <- data.frame(tmp) %>%
   data.frame %>%
   group_by(Patient.ID,position,Material) %>%
   mutate(n.material = n())%>% #to see number of times this mutation occurs within the same material (= at different timepoints)
+  data.frame%>%
+  group_by(Patient.ID,position,Visite)%>% #to see number of times this mutations occurs at a certain timepoint irrespective of material
+  mutate(n.visite = n())%>%
   data.frame
 
   as.data.frame(df %>% 
@@ -114,8 +123,6 @@ df <- data.frame(tmp) %>%
   mutate(dev.med = (TVAF-med.vaf)/sd.vaf) %>% #tells us by how many standard deviations the VAF at the current position deviates from the median
   mutate(p.binom = ifelse(mutFreq > 9,log10(1-pbinom(TR2,readDepth,med.vaf)),-Inf))%>%   #p.binom is a measure for the likelihood to get these number of variant reads TR2 (or more), assuming a Bernoulli experiment with p=med.vaf
   filter(!is.na(TR2),!is.na(readDepth))%>% 
-  group_by(Patient.ID,position) %>% 
-  mutate(serial.mut = n()) %>%
   data.frame %>%
   mutate(hotspot = is.element(position2,hotspots)) %>% #hotspots (defined above)
   mutate(igv = paste(Chr,Start,sep=":"))%>%
@@ -123,8 +130,8 @@ df <- data.frame(tmp) %>%
     left_join(.,df.material,by="Patient.ID")->df
 
 #save as csv in interim data folder
-write.csv(df%>%filter(!is.na(Patient.ID)),'data/interim/mutationcalls.csv')
-write.csv(df%>%filter(is.na(Patient.ID)),'data/interim/newsample_calls.csv')
+write.csv(df%>%filter(!is.na(Patient.ID)),'data/interim/mutationcalls.csv') # EUDARIO samples
+write.csv(df%>%filter(is.na(Patient.ID)),'data/interim/newsample_calls.csv') # non-EUDARIO samples
 
 ##Save RData for further use
   tempdata <-ls()
