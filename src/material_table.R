@@ -21,6 +21,7 @@ source("src/ids.R")
 
 ##### create a table with available material at timepoints for each patient ####
 ids %>% 
+  filter(is.na(replicate))%>%
   mutate(visit_mat = paste(Visite,Material,sep="_")) %>% 
   data.frame %>%
   dummy_cols(.,select_columns = "visit_mat") %>% 
