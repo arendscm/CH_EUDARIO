@@ -55,7 +55,7 @@ df %>%
 
 ## read count criteria
 df %>%
-  filter(readDepth > 100, TR2 > 19, TVAF > 0.005) %>%
+  filter(readDepth > 100, TVAF > 0.01, TR2>19) %>%
   dplyr::select(mutID) -> mutID.count
 
 ## quality criteria
@@ -70,22 +70,28 @@ df %>%
   filter((mutFreq < max(0.05*n.lane,5))&((p.binom<= -10)&med.vaf < 0.44))%>% #filtert nach Häufigkeit und binomialer Wahrscheinlichkeit
   dplyr::select(mutID) -> mutID.freq
 
-# rescue ASXL1 dupG mutations <- this step is no longer needed, when we use p.binom 
-#df %>%
-#  filter(str_detect(Start,'32434638'))%>%filter(str_detect(AAChange,'ASXL1')) %>%
-#  mutate(dev.med = ((TVAF - median(TVAF))/sd(TVAF))) %>% #calculate deviation from median in terms of standarddeviations
-#  filter(dev.med > 1) %>%    #to be discussed
-#  dplyr::select(mutID) -> mutID.asxl1
-
 ## rescue hotspots/mutations reported in cosmic data base for OVCa
 df %>%
   filter(str_detect(cosmic92_coding,"ovary")) %>%
   filter(FisherScore < 20) %>% 
   filter(StrandBalance2 != 1 & StrandBalance2 != 0) %>%     #filter out mutations only seen on one strand
-  filter(TR2 > 15) %>%
+  filter(TR2 > 9) %>%
   filter(TVAF >0.001) %>%
-  filter(!snp)%>%
+  filter(p.binom< -10)%>%
+  filter(mutFreq < 0.1*n.lane)%>%
   dplyr::select(mutID)-> mutID.cosmic
+
+## rescue TP53 mutations OVCa
+df %>%
+  filter(Gene == "TP53") %>%
+  filter(ExonicFunc != "synonymous SNV")%>%
+  filter(FisherScore < 20) %>% 
+  filter(StrandBalance2 != 1 & StrandBalance2 != 0) %>%     #filter out mutations only seen on one strand
+  filter(TR2 > 14) %>%
+  filter(TVAF >0.001) %>%
+  filter(p.binom< -10)%>%
+  filter(mutFreq < 0.1*n.lane)%>%
+  dplyr::select(mutID)-> mutID.tp53
 
 #filtering
 ##somatic variants
@@ -94,7 +100,8 @@ inner_join(mutID.func,mutID.count) %>%
   inner_join(.,mutID.qual) %>% 
   inner_join(.,df) %>% 
   full_join(.,inner_join(df,mutID.cosmic))%>%
-  filter(snp == FALSE) %>%
+  full_join(.,inner_join(df,mutID.tp53))%>%
+  filter(snp == FALSE&!(TVAF > 0.4 & n.visite>1)) %>% #filters out SNPs and germline mutations
   #full_join(.,inner_join(df,mutID.tag.true))%>%
   filter(ExonicFunc != "synonymous SNV") %>% 
   group_by(Sample) %>% 
