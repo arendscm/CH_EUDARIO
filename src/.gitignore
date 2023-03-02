@@ -1,1 +1,3 @@
-SC-Analysis.R
+SNP_matching.R
+qc.R
+sample_registry.R
