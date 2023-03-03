@@ -59,6 +59,7 @@ for (file in c("QC_1803","QC_1519","QC_1346")){
 
 
 #####   Germline Comparison across all samples for each patient   ####
+load('data/interim/seqdata.RData')
 df %>% 
   filter(snp == TRUE)%>%
   filter(avsnp150!=".")%>%
@@ -148,7 +149,6 @@ for (patient_id in patient_ids) {
       # Calculate the overlap percentage
       overlap_percentage <- (length(intersection) / nrow(sample_1)) * 100
       
-      # Store the results in the results data frame
       germline_comparison <- rbind(germline_comparison, data.frame(patient_id = patient_id, sample_id_1 = sample_ids[i], sample_id_2 = sample_ids[j], overlap_percentage = overlap_percentage))
     }
   }
