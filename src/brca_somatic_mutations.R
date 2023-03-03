@@ -70,5 +70,3 @@ df.eot %>%
   filter(p.binom< -10)%>%
   filter(mutFreq < 0.1*n.lane)%>%
   filter(!snp)%>%select(Patient.ID,Chr,Start,End,Ref,Alt,Gene,Func,ExonicFunc,TVAF,n.material,n.visite,c1d1_cf,eot_cf)
-
-

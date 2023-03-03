@@ -7,4 +7,5 @@ data
 output
 EUDARIO.Rproj
 src/SC-Analysis.R
+src/archive
 output/Overview_Table.xlsx
