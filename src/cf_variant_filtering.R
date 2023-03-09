@@ -124,6 +124,8 @@ inner_join(mutID.func,mutID.count) %>%
 ##hier kann man noch weiter filtern, hohe mutfreqs rausschmeißen, nur HRD Gene anschauen etc. und dann sollte es erstmal eine überschaubare menge an mutationen sein. Finetuning müssen wir dann noch schauen
 ##ich hab jetzt nur hrd und ovarian cancer genes, da wir über diese Tabelle ja die Patienten als hrd pos identififizieren... dazu gehören dann auch die pathogenen BRCA 1 & 2 germline mutations
 
+
+
 rm(mutID.CHIP)+
 rm(mutID.CHIP.qual)+
 rm(mutID.count)+
@@ -141,3 +143,17 @@ save.image("data/interim/seqdata_filtered_cf.RData")
 
 filename <- paste("output/filtered_results_c1d1_cf_",Sys.Date(),".xlsx",sep="")
 write.xlsx(df.filtered_cf,filename,sheetName = "filtered_results",append=TRUE)
+
+#####BRCA somatic mutations
+df %>%
+  filter(Gene == "BRCA1"|Gene == "BRCA2") %>%
+  filter(ExonicFunc != "synonymous SNV")%>%
+  filter(FisherScore < 20) %>% 
+  filter(StrandBalance2 != 1 & StrandBalance2 != 0) %>%     #filter out mutations only seen on one strand
+  filter(TR2 > 19) %>%
+  filter(TVAF >0.01) %>%
+  filter(p.binom< -10)%>%
+  filter(mutFreq < 0.1*n.lane)%>%
+  filter(!snp)
+
+
