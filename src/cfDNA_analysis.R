@@ -41,18 +41,22 @@ tp53_genes <- c("TP53")
 ppm1d_genes <- c("PPM1D")
 brca_genes <- c("BRCA1","BRCA2")
 hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3")
-
+failedSamples <-c('OvCA_44_C1D1_cf','OvCA_45_C1D1_cf','OvCA_46_C1D1_cf','OvCA_48_C1D1_cf','OvCA_50_C1D1_cf','OvCA_54_C1D1_cf','OvCA_93_C1D1_cf',
+                  'OvCA_11_C1D1_cf','OvCA_40_C1D1_cf','OvCA_53_C1D1_cf','OvCA_65_C1D1_cf')
+Categories<-c('BRCA', 'CH','HRD','other', 'TP53')
 #data frame with mutation calls from cfDNA             
 df %>% 
   filter(Material=="cf") %>% 
   filter(Visite == "C1D1")%>%
   filter(is.na(replicate))%>%
+  filter(!is.element(Sample.ID, failedSamples))%>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_"))-> df.cf
 df %>% 
   filter(Material=="wb") %>% 
   filter(Visite == "C1D1")%>%
   filter(is.na(replicate))%>%
+  filter(!is.element(Sample.ID, failedSamples))%>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_"))-> df.wb
 
@@ -65,6 +69,7 @@ df %>%
   filter(is.na(replicate))%>%
   filter(Material=="wb") %>% 
   filter(Visite == "C1D1")%>%
+  filter(!is.element(Sample.ID, failedSamples))%>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_")) -> df.cf_wb
 
@@ -173,10 +178,11 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   filter(snp.x==FALSE)%>%
   filter(TVAF.x>0.005|TVAF.y>0.005)%>%
   filter(TR2.y > 19|TR2.x>19)%>%
-  ggplot(aes(x=TVAF.x,y=TVAF.y,
+  
+  ggplot(below_line_data, aes(x=TVAF.x,y=TVAF.y,
              color=gene,
              #shape=ExonicFunc.x
-  )) +
+             )) +
   geom_point(size=2)+
   geom_abline(slope=1,size=1,linetype=2,alpha=0.5)+
   geom_abline(slope=1/3,size=1,linetype=3,alpha=0.5,intercept=-2)+
@@ -192,6 +198,76 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
 png("output/figures/p.cf.corr.filter1.png",width=10, height=6,units="in",res=500,type="cairo")
 p.cf.corr
 dev.off()
+
+below_line_data <- full_join(df.cf, df.cf_wb, by = "cfID") %>% 
+  mutate(TVAF.y = ifelse(is.na(TVAF.y), 0, TVAF.y)) %>% 
+  mutate(TVAF.x = ifelse(is.na(TVAF.x), 0, TVAF.x)) %>%
+  mutate(gene = ifelse(is.element(Gene.x, ch_genes), "CH",
+                       ifelse(is.element(Gene.x, tp53_genes), "TP53",
+                              ifelse(is.element(Gene.x, hrd_genes), "HRD",
+                                     ifelse(is.element(Gene.x, brca_genes), "BRCA",
+                                            ifelse(is.element(Gene.x, ppm1d_genes), "PPM1D", "other"))))))%>%
+  mutate(cosmic_ovary = str_detect(cosmic92_coding.x, "ovary")) %>%
+  filter(p.binom.x <= -10) %>%
+  filter(Func.x %in% c("exonic", "splicing", "exonic;splicing")) %>%
+  filter(ExonicFunc.x != "synonymous SNV")%>%
+  filter(AF.x < 0.1)%>%
+  filter(snp.x == FALSE)%>%
+  filter(TVAF.x > 0.005 | TVAF.y > 0.005)%>%
+  filter(TR2.y > 19 | TR2.x > 19)%>%
+  filter(TVAF.y < TVAF.x/3)%>%
+  filter(TVAF.y < 0.003)
+
+
+# Use table() to get the count of variants in each gene category
+gene_counts <- table(below_line_data$gene)
+
+# Calculate the percentage of variants in each gene category
+gene_percents <- prop.table(gene_counts) * 100
+
+# Create a bar plot of the percentage of variants in each gene category
+barplot(gene_percents, main = "Percentage of Variants by Gene Category",
+        xlab = "Gene Category", ylab = "Percentage")
+
+##PLOTs
+nop <- ids%>%
+  filter(Visite == "C1D1" & Material == "wb")%>%
+  select(.,Patient.ID)%>%
+  unique()%>%nrow
+
+########   Gene Mutation Prevalence Plot (plots number of gene-x-mutated patients)  #####
+prev.table%>%
+  filter(Gene == "x")->prev.table.final
+for (x in Categories)
+{
+below_line_data %>% 
+    filter(gene == x)%>%
+  #filter(Gene %in% hrd_genes)%>%  #only HRD panel, when we say: this is the prevalence plot for HRD in these patients
+  #filter(Gene %in% ch_genes)%>%  #only CH panel, when we say: this is the prevalence plot for CH in these patient
+  dplyr::select(Sample.x, Gene.x, gene)%>%
+  data.frame %>% 
+  unique %>% 
+  dplyr::select(Gene.x, gene) %>% 
+  table %>% 
+  data.frame %>% 
+  filter(Freq>0) %>% 
+  mutate(prev = Freq/nop) %>% 
+  arrange(prev) -> prev.table
+names(prev.table)<- c( "Gene","gene","prev", "Freq")
+bind_rows(prev.table, prev.table.final)->prev.table.final
+}
+
+prev.table.final %>%
+  ggplot(aes(x=reorder(Gene, Freq), y = prev)) +
+  geom_bar(stat="identity", width=0.6)+
+  xlab("")+
+  ylab("Gene Mutation Prevalence [%]") +
+  my_theme() +
+  theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35,face="italic")) +
+  coord_flip() +
+  facet_wrap(~ gene)-> p.mutprev
+p.mutprev
+
 
 
 ##### Correlation plot Filter 1 - TP53 mutations only 
