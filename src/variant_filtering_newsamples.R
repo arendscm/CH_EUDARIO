@@ -260,7 +260,11 @@ ggplot(data, aes(x = ifelse(Multiple_Mutations == 1, 0.2, -0.2), y = Age, fill =
                     labels = c("No", "Yes")) +
   theme_minimal()+
   theme(legend.title = element_text(size = 10))+
-  theme(axis.title = element_text(size = 14))->p.violin.age
+  theme(axis.title = element_text(size = 14),
+        axis.text.y = element_text(angle = 0, hjust = 0.5, vjust = 0.35, face = "italic", size = 18),
+        plot.title = element_text(size = 20, face = "bold"),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 16))->p.violin.age
 
 png("output/figures/SC-p.violin.age.png",width=10, height=10,units="in",res=500,type="cairo")
 p.violin.age
@@ -275,7 +279,11 @@ ggplot(data, aes(x = ifelse(Multiple_Mutations == 1, 0.2, -0.2), y = months_PARP
                     labels = c("No", "Yes")) +
   theme_minimal()+
   theme(legend.title = element_text(size = 10))+
-  theme(axis.title = element_text(size = 14))->p.violin.monthsPARPi
+  theme(axis.title = element_text(size = 14),
+        axis.text.y = element_text(angle = 0, hjust = 0.5, vjust = 0.35, face = "italic", size = 16),
+        plot.title = element_text(size = 20, face = "bold"),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 16))->p.violin.monthsPARPi
 
 png("output/figures/SC-p.violin.monthsPARPi.png",width=10, height=10,units="in",res=500,type="cairo")
 p.violin.monthsPARPi
@@ -290,7 +298,11 @@ ggplot(data, aes(x = ifelse(Multiple_Mutations == 1, 0.2, -0.2), y = Rezidiv, fi
                     labels = c("No", "Yes")) +
   theme_minimal()+
   theme(legend.title = element_text(size = 10))+
-  theme(axis.title = element_text(size = 14))->p.violin.Rezidiv
+  theme(axis.title = element_text(size = 14),
+        axis.text.y = element_text(angle = 0, hjust = 0.5, vjust = 0.35, face = "italic", size = 16),
+        plot.title = element_text(size = 20, face = "bold"),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 16))->p.violin.Rezidiv
 
 png("output/figures/SC-p.violin.Rezidiv.png",width=10, height=10,units="in",res=500,type="cairo")
 p.violin.Rezidiv
