@@ -45,7 +45,8 @@ hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM17
 failedSamples <-c('OvCA_44_C1D1_cf','OvCA_45_C1D1_cf','OvCA_46_C1D1_cf','OvCA_48_C1D1_cf','OvCA_50_C1D1_cf','OvCA_54_C1D1_cf','OvCA_93_C1D1_cf',
                   'OvCA_11_C1D1_cf','OvCA_40_C1D1_cf','OvCA_53_C1D1_cf','OvCA_65_C1D1_cf')
 Categories<-c('CH','HRD','other', 'TP53')
-#data frame with mutation calls from cfDNA             
+
+#dataframe with mutation calls from cfDNA             
 df %>% 
   filter(Material=="cf") %>% 
   filter(Visite == "C1D1")%>%
@@ -198,11 +199,7 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   theme_minimal()->p.cf.corr
 p.cf.corr
 
-<<<<<<< HEAD
-png("output/figures/p.cf.corr.filter1.png",width=6, height=4,units="in",res=500,type="cairo")
-=======
 png("output/figures/p.cf.corr.filter1.png",width=10, height=10,units="in",res=500,type="cairo")
->>>>>>> a68ef340685e7eed40598bfdd34819df7b3e8e52
 p.cf.corr
 dev.off()
 
@@ -775,8 +772,6 @@ full_join(df1,df2,by=c("cfID_visit"))%>%
   ylab("whole blood VAF")+
   xlab("cfDNA VAF")+
   theme_minimal()
-
-
 
 #png("output/figures/p.cf.serial.png",width=6, height=4,units="in",res=500,type="cairo")
 #p.cf.serial
