@@ -44,7 +44,7 @@ brca_genes <- c("BRCA1","BRCA2")
 hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3")
 failedSamples <-c('OvCA_44_C1D1_cf','OvCA_45_C1D1_cf','OvCA_46_C1D1_cf','OvCA_48_C1D1_cf','OvCA_50_C1D1_cf','OvCA_54_C1D1_cf','OvCA_93_C1D1_cf',
                   'OvCA_11_C1D1_cf','OvCA_40_C1D1_cf','OvCA_53_C1D1_cf','OvCA_65_C1D1_cf')
-Categories<-c('CH','HRD','other', 'TP53')
+Categories<-c('CH','HRD','other','TP53')
 
 #dataframe with mutation calls from cfDNA             
 df %>% 
@@ -54,16 +54,6 @@ df %>%
   filter(!is.element(Sample.ID, failedSamples))%>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_"))-> df.cf
-df %>% 
-  filter(Material=="wb") %>% 
-  filter(Visite == "C1D1")%>%
-  filter(is.na(replicate))%>%
-  filter(!is.element(Sample.ID, failedSamples))%>%
-  dplyr::select(all_of(variables)) %>%
-  mutate(cfID=paste(Patient.ID,position,sep="_"))-> df.wb
-
-#anti_join(df.cf, df.wb, by= "cfID")->df.cf_only
-#save(df.cf_only,file="data/interim/df.cf_only.RDATA")
 
 #data frame with mutation calls from WB samples that have matched cfDNA samples
 df %>% 
@@ -84,7 +74,6 @@ png("output/figures/p.cf.snp.png",width=5, height=7,units="in",res=500,type="cai
 p.cf.snp
 dev.off()
 
-
 #####  Correlation Plot WB vs cfDNA all calls, only calls that are present in WB ####
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
   mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x))%>%
@@ -98,8 +87,8 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
             cor.coef = TRUE, 
             cor.method = "pearson",
             size=1,
-            ylab = "VAF wholeblood", 
-            xlab = "VAF cfDNA")->p.cfDNACor
+            ylab = "whole-blood VAF", 
+            xlab = "cfDNA VAF")->p.cfDNACor
 p.cfDNACor
 
 #####  Correlation Plot WB vs cfDNA calls tagged true, only calls that are present in WB ####
@@ -130,7 +119,7 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   #filter(!is.element(Sample.x,mismatch))%>%
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
   mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
-  mutate(gene = ifelse(is.element(Gene.x,ch_genes),"CH",
+  mutate(gene = ifelse(is.element(Gene.x,ch_genes_without_HRD),"CH",
                        ifelse(is.element(Gene.x,tp53_genes),"TP53",
                               ifelse(is.element(Gene.x,hrd_genes),"HRD",
                                      ifelse(is.element(Gene.x,brca_genes),"BRCA",
@@ -153,7 +142,6 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   geom_abline(slope=1/3,size=1,linetype=3,alpha=0.5,intercept=-2)+
   scale_y_log10()+
   scale_x_log10()+
-
   #facet_wrap(~ Patient.ID.x, ncol=4, dir="h")+
   scale_color_viridis(discrete=TRUE)+
   ylab("whole blood VAF")+
@@ -169,7 +157,7 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   #filter(!is.element(Sample.x,mismatch))%>%
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
   mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
-  mutate(gene = ifelse(is.element(Gene.x,ch_genes),"CH",
+  mutate(gene = ifelse(is.element(Gene.x,ch_genes_without_HRD),"CH",
                        ifelse(is.element(Gene.x,tp53_genes),"TP53",
                               ifelse(is.element(Gene.x,hrd_genes),"HRD",
                                      ifelse(is.element(Gene.x,brca_genes),"BRCA",
@@ -203,11 +191,11 @@ png("output/figures/p.cf.corr.filter1.png",width=10, height=10,units="in",res=50
 p.cf.corr
 dev.off()
 
-
+###------------------------------------diesen teil verstehe ich nicht ganz
 #### below line composition analysis
 load("data/interim/seqdata_filtered_cf.RData")
 
-df_filtered_cf%>%
+df.filtered_cf%>%
   filter(tag == "true" | tag == "tumour")%>%
   mutate(gene = ifelse(is.element(Gene, ch_genes_without_HRD), "CH",
                        ifelse(is.element(Gene, tp53_genes), "TP53",

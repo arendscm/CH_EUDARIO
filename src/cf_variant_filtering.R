@@ -110,8 +110,6 @@ inner_join(mutID.func,mutID.count) %>%
   filter(snp == FALSE&!(TVAF > 0.4 & n.visite>1)) %>% #filters out SNPs and germline mutations
   #full_join(.,inner_join(df,mutID.tag.true))%>%
   filter(ExonicFunc != "synonymous SNV") %>% 
-  #filter(Gene %in% hrd_genes | Gene %in% ovarian_cancer_genes)%>%
-  filter(Gene %in% PARPi_actionable_genes)%>%
   group_by(Sample) %>% 
   mutate(n.mut.patient = n()) %>% 
   data.frame %>%
@@ -120,47 +118,27 @@ inner_join(mutID.func,mutID.count) %>%
   mutate(PARPi_actionable = is.element(Gene,PARPi_actionable_genes))%>%
   mutate(OvarianCancerGene = is.element(Gene,ovarian_cancer_genes))%>%
   mutate(CH_gene = is.element(Gene,ch_genes))%>%
-  filter(!is.element(Sample.ID, failedSamples))-> df.filtered_cf_PARpi
+  filter(!is.element(Sample.ID, failedSamples))-> df.filtered_cf
 
 ##hier kann man noch weiter filtern, hohe mutfreqs rausschmeißen, nur HRD Gene anschauen etc. und dann sollte es erstmal eine überschaubare menge an mutationen sein. Finetuning müssen wir dann noch schauen
 ##ich hab jetzt nur hrd und ovarian cancer genes, da wir über diese Tabelle ja die Patienten als hrd pos identififizieren... dazu gehören dann auch die pathogenen BRCA 1 & 2 germline mutations
 
-
-
-rm(mutID.CHIP)+
-rm(mutID.CHIP.qual)+
 rm(mutID.count)+
 rm(mutID.freq)+
 rm(mutID.func)+
-rm(mutID.hotspots)+
+rm(mutID.cosmic)+
+rm(mutID.tp53)+
 rm(mutID.qual)+
-rm(mutID.tag.true)
 rm(ids)+
 rm(mm_hotspots)+
 rm(tempdata)+
 rm(df)
+rm(df.backup)
 
 save.image("data/interim/seqdata_filtered_cf.RData")
 
-filename <- paste("output/filtered_results_c1d1_cf_PARPi",Sys.Date(),".xlsx",sep="")
+filename <- paste("output/filtered_results_c1d1_cf",Sys.Date(),".xlsx",sep="")
 write.xlsx(df.filtered_cf_PARpi,filename,sheetName = "filtered_results",append=TRUE)
 
-#####BRCA somatic mutations
-df %>%
-  filter(Gene == "BRCA1"|Gene == "BRCA2") %>%
-  filter(ExonicFunc != "synonymous SNV")%>%
-  filter(FisherScore < 20) %>% 
-  filter(StrandBalance2 != 1 & StrandBalance2 != 0) %>%     #filter out mutations only seen on one strand
-  filter(TR2 > 19) %>%
-  filter(TVAF >0.01) %>%
-  filter(p.binom< -10)%>%
-  filter(mutFreq < 0.1*n.lane)%>%
-  filter(!snp)
-
-df_cf_only%>%
-  mutate(tag = as.factor(tag.new))%>%
-  select(., mutID, tag)->tags
-
-left_join(df.filtered_cf,tags, by="mutID")->df.filtered_cf
 
 
