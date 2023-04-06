@@ -29,6 +29,7 @@ load('data/interim/seqdata_filtered.RData')
 
 ######## Get Patient ids
 source("src/ids.R")
+source("src/material_table.R")
 
 ######## Functions and themes
 source("src/createMAF.R")
@@ -97,7 +98,8 @@ p.cfDNACor
 
 #####  Correlation Plot WB vs cfDNA calls tagged true, only calls that are present in WB ####
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
-  filter(tag.y == "true")->test
+  filter(tag.y == "true")%>%
+  filter(TVAF.y > 0.01)%>%
   ggscatter(., 
             y = "TVAF.x", 
             x = "TVAF.y", 
@@ -106,11 +108,13 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
             cor.coef = TRUE, 
             cor.method = "pearson",
             size=1,
-            xlab = "VAF cfDNA", 
-            ylab = "VAF wholeblood")->p.cfDNACor
+            xlab = "cfDNA VAF", 
+            ylab = "whole-blood VAF")+
+  scale_y_log10()+
+  scale_x_log10()->p.cfDNACor
 p.cfDNACor
 
-png("output/figures/p.cf.wb.png",width=10, height=6,units="in",res=500,type="cairo")
+png("output/figures/p.cf.wb.png",width=4, height=4,units="in",res=500,type="cairo")
 p.cfDNACor
 dev.off()
 
@@ -171,7 +175,7 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   filter(ExonicFunc.x != "synonymous SNV")%>%
   filter(AF.x<0.1)%>%
   filter(snp.x==FALSE)%>%
-  filter(TVAF.x>0.005|TVAF.y>0.005)%>%
+  filter(TVAF.x>0.01|TVAF.y>0.01)%>%
   filter(TR2.y > 19|TR2.x>19)%>%
   ggplot(aes(x=TVAF.x,y=TVAF.y,
              color=gene,
@@ -182,14 +186,14 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   geom_abline(slope=1/3,size=1,linetype=3,alpha=0.5,intercept=-2)+
   scale_y_log10()+
   scale_x_log10()+
-  
   #facet_wrap(~ Patient.ID.x, ncol=4, dir="h")+
   scale_color_viridis(discrete=TRUE)+
-  ylab("whole blood VAF")+
+  ylab("whole-blood VAF")+
   xlab("cfDNA VAF")+
   theme_minimal()->p.cf.corr
+p.cf.corr
 
-png("output/figures/p.cf.corr.filter1.png",width=10, height=6,units="in",res=500,type="cairo")
+png("output/figures/p.cf.corr.filter1.png",width=6, height=4,units="in",res=500,type="cairo")
 p.cf.corr
 dev.off()
 
@@ -400,6 +404,7 @@ df %>%
   mutate(n.visit=n())%>%
   data.frame%>%
   full_join(.,df.cfonly)%>%
+  filter(is.element(Patient.ID,c("4202011","4207004","4202001","4221010")))%>%
   filter(n.material>=2|n.visit>1)%>%
   filter(AF<0.01)%>%
   group_by(Patient.ID,position) %>%

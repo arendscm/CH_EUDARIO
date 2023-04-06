@@ -41,6 +41,8 @@ source("src/global_functions_themes.R")
 
 ########   Mutational Analysis preparation #####
 ##PLOTs
+df.filtered.c1d1 %>% mutate(Gene=ifelse(Gene=="U2AF1;U2AF1L5","U2AF1",Gene)) -> df.filtered.c1d1
+
 nop <- ids%>%
   filter(Visite == "C1D1" & Material == "wb")%>%
   select(.,Patient.ID)%>%
@@ -52,6 +54,9 @@ df.filtered.c1d1%>%
   unique()%>%
   nrow()->no.chpos.pat
 
+df.filtered.c1d1 %>% 
+  filter(tag == "true") %>%
+  filter(TVAF >= 0.01) %>%nrow() #number of mutations
 
 hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3", "BRCA1", "BRCA2")
 ch_genes <- c("DNMT3A", "TET2" ,  "JAK2" ,  "ASXL1" , "SF3B1" , "SRSF2" , "TP53"  , "U2AF1" , "PPM1D" , "CBL"  ,  "IDH1"  , "IDH2"  , "BCOR"  , "BCORL1", "EZH2" ,  "RAD21" , "STAG2" , "CHEK2" , "GNAS"  , "GNB1"  , "ATM"   , "KRAS" ,  "NRAS",   "WT1" ,   "MYD88" ,
@@ -89,6 +94,48 @@ prev.table  %>%
 p.mutprev
 
 png("output/figures/mutprev.png",width=8, height=6,units="in",res=500,type="cairo")
+p.mutprev
+dev.off()
+
+rm(prev.table)
+rm(p.mutprev)
+
+##Prevplot with DDR mutations in different color
+########   Gene Mutation Prevalence Plot (plots number of gene-x-mutated patients)  #####
+ddr <- c("PPM1D","TP53",hrd_genes)
+
+df.filtered.c1d1 %>% 
+  filter(tag == "true") %>%
+  filter(TVAF >= 0.01) %>%
+  dplyr::select(Sample, Gene) %>% 
+  data.frame %>% 
+  unique %>% 
+  dplyr::select(Gene) %>% 
+  table %>% 
+  data.frame %>% 
+  filter(Freq >0) %>% 
+  mutate(prev = Freq/nop) %>% 
+  arrange(prev) -> prev.table
+names(prev.table)<- c( "Gene","Freq","prev")
+
+prev.table  %>%
+  mutate(DDR = ifelse(is.element(Gene,ddr),"DNA damage response","other"))%>%
+  ggplot(aes(x=reorder(Gene, Freq), y=prev, fill=DDR)) +
+  geom_bar(stat="identity", width=0.6)+
+  geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
+  xlab("")+
+  scale_y_continuous(labels = percent,limits=c(0,0.30), position = "right")+
+  ylab("Gene Mutation Prevalence [%]") +
+  my_theme() +
+  theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35,face="italic")) +
+  coord_flip() + 
+  scale_fill_manual("",values = c("#486081","#88acd4"))+
+  theme(legend.position = c(0.7,0.2), 
+        legend.key.size =unit(0.6,'cm'),
+        legend.text = element_text(size=10))-> p.mutprev
+p.mutprev
+
+png("output/figures/mutprev_ddr.png",width=6, height=5,units="in",res=500,type="cairo")
 p.mutprev
 dev.off()
 
@@ -233,6 +280,37 @@ ggplot(mutation_barplot, aes(x = mutations, y = num_patients)) +
 p.nom
 
 png("output/figures/no of mutations.png",width=4, height=3,units="in",res=500,type="cairo")
+p.nom
+dev.off()
+
+##alternative no. of mutation plot
+ids %>% 
+  filter(visit_material=="C1D1_wb") %>% 
+  dplyr::select(Patient.ID) %>% 
+  left_join(.,df.filtered.c1d1%>%
+              filter(TVAF > 0.01,tag=="true")%>%
+              group_by(Patient.ID)%>%
+              mutate(n.patient = n())%>%
+              data.frame%>%
+              dplyr::select(Patient.ID,n.patient)%>% 
+              unique)%>%
+  mutate(n.patient=replace_na(n.patient,0))%>%
+  mutate(n.patient=ifelse(n.patient > 5, ">5",n.patient))%>%
+  mutate(n.patient=factor(n.patient,levels=c("0","1","2","3","4",">5")))%>%
+  dplyr::select(n.patient)%>%
+  table%>%
+  data.frame -> df.nom
+names(df.nom) <- c("nom","Freq")
+
+df.nom %>% ggplot(., aes(x = nom, y = Freq)) +
+  geom_bar(stat = "identity", fill = "#486081") +
+  labs(x = "Number of Mutations", y = "Number of Patients")+
+  #scale_x_continuous(limits = c(0.5, 8.5), breaks = 1:8)+
+  #ggtitle("No. of mutations per patient [>1%]")+
+  my_theme()->p.nom
+p.nom
+
+png("output/figures/nom.png",width=4, height=3,units="in",res=500,type="cairo")
 p.nom
 dev.off()
 
