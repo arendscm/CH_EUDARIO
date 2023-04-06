@@ -50,14 +50,14 @@ source("src/brca_germline.R")
 #####BRCA germline and somatic mutations c1d1
 df.c1d1 %>%
   filter(Gene == "BRCA1"|Gene == "BRCA2") %>%
-  #filter(ExonicFunc != "synonymous SNV")%>%
+  filter(ExonicFunc != "synonymous SNV")%>%
   filter(FisherScore < 20) %>% 
   filter(StrandBalance2 != 1 & StrandBalance2 != 0) %>%     #filter out mutations only seen on one strand
   filter(TR2 > 19) %>%
   filter(TVAF >0.01) %>%
   filter(p.binom< -10)%>%
   filter(mutFreq < 0.1*n.lane)%>%
-  filter(!snp)
+  filter(!snp)->df.c1d1.brca_som
 
 ##brca germline and somatic mutations at EOT
 df.eot %>%
@@ -70,3 +70,6 @@ df.eot %>%
   filter(p.binom< -10)%>%
   filter(mutFreq < 0.1*n.lane)%>%
   filter(!snp)%>%select(Patient.ID,Chr,Start,End,Ref,Alt,Gene,Func,ExonicFunc,TVAF,n.material,n.visite,c1d1_cf,eot_cf)
+
+filename="output/BRCA_and_HRD_GermlineStatus.xlsx"
+write.xlsx(df.c1d1.brca_som,filename,sheetName="somatic BRCA",append=TRUE)
