@@ -1,11 +1,9 @@
 .Rproj.user
 .Rhistory
 .RData
-.RDataTmp
 .Ruserdata
-data
-output
-EUDARIO.Rproj
-src/SC-Analysis.R
-src/archive
 output/Overview_Table.xlsx
+output
+data
+README.md
+src/.gitignore
