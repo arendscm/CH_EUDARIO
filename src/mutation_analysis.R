@@ -219,7 +219,6 @@ df.filtered.c1d1 %>%
 names(prev.table_brca0)<- c( "Gene","Freq","prev","brca")
 
 #prevalences in brca mutated patients
-
 df.filtered.c1d1 %>% 
   filter(tag == "true") %>%
   filter(TVAF >= 0.01) %>%

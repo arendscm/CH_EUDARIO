@@ -30,7 +30,8 @@ library(RColorBrewer)
 #df <- read.csv('data/interim/mutationcalls.csv')
 load('data/interim/seqdata.RData')
 SC_registry <- read_excel("data/external/SC_registry.xlsx")
-
+PatientandSample_Details <- read_excel("data/external/Proben-Registry_Ovarial-CA.xlsx", 
+                                       sheet = "Patient details")
 ###include only new samples = those with Patient.ID = NA
 df -> df.orig
 df.orig %>% filter(is.na(Patient.ID)) -> df
@@ -97,7 +98,7 @@ inner_join(mutID.func,mutID.count) %>%
   full_join(.,inner_join(df,mutID.hotspots))%>%
   filter(snp == FALSE) %>%
   mutate(current_filter = 1) %>% ##tag all variants passing current filter, then join with list of previously tagged true
-  full_join(df %>% filter(tag=="true"))-> df.filtered
+  full_join(df %>% filter(tag=="true"))-> df.filtered.newsamples
 
 
 rm(mutID.CHIP)+
@@ -107,7 +108,7 @@ rm(mutID.freq)+
 rm(mutID.func)+
 rm(mutID.hotspots)+
 rm(mutID.qual)+
-rm(ids)+
+rm(df.orig)+
 rm(df)
 
 save.image("data/interim/newsamples_filtered.RData")
@@ -247,3 +248,67 @@ Comutations_all
 png("output/figures/comutationsSC.png",width=15, height=5,units="in",res=500,type="cairo")
 Comutations_all
 dev.off()
+
+#### Analysis ####
+PatientandSample_Details->data
+#Violin Age
+ggplot(data, aes(x = ifelse(Multiple_Mutations == 1, 0.2, -0.2), y = Age, fill = factor(Multiple_Mutations), group = Multiple_Mutations)) + 
+  geom_violin(alpha = 0.5, position = position_nudge(x = 0.2)) +
+  geom_boxplot(aes(x = ifelse(Multiple_Mutations == 1, 0.2, -0.2)), 
+               width = 0.05, fill = "white", color = "black", position = position_nudge(x = 0.2)) +  labs(x = "", y = "Age", fill = "Multiple Mutations") +
+  scale_fill_manual(values = c("lightblue", "pink"), 
+                    labels = c("No", "Yes")) +
+  theme_minimal()+
+  theme(legend.title = element_text(size = 10))+
+  theme(axis.title = element_text(size = 14),
+        axis.text.y = element_text(angle = 0, hjust = 0.5, vjust = 0.35, face = "italic", size = 18),
+        plot.title = element_text(size = 20, face = "bold"),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 16))->p.violin.age
+
+png("output/figures/SC-p.violin.age.png",width=10, height=10,units="in",res=500,type="cairo")
+p.violin.age
+dev.off()
+
+#Violin Months PARPi
+ggplot(data, aes(x = ifelse(Multiple_Mutations == 1, 0.2, -0.2), y = months_PARPi, fill = factor(Multiple_Mutations), group = Multiple_Mutations)) + 
+  geom_violin(alpha = 0.5, position = position_nudge(x = 0.2)) +
+  geom_boxplot(aes(x = ifelse(Multiple_Mutations == 1, 0.2, -0.2)), 
+               width = 0.05, fill = "white", color = "black", position = position_nudge(x = 0.2)) +  labs(x = "", y = "Months PARPi Treatment", fill = "Multiple Mutations") +
+  scale_fill_manual(values = c("lightblue", "pink"), 
+                    labels = c("No", "Yes")) +
+  theme_minimal()+
+  theme(legend.title = element_text(size = 10))+
+  theme(axis.title = element_text(size = 14),
+        axis.text.y = element_text(angle = 0, hjust = 0.5, vjust = 0.35, face = "italic", size = 16),
+        plot.title = element_text(size = 20, face = "bold"),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 16))->p.violin.monthsPARPi
+
+png("output/figures/SC-p.violin.monthsPARPi.png",width=10, height=10,units="in",res=500,type="cairo")
+p.violin.monthsPARPi
+dev.off()
+
+#Violin Rezidive
+ggplot(data, aes(x = ifelse(Multiple_Mutations == 1, 0.2, -0.2), y = Rezidiv, fill = factor(Multiple_Mutations), group = Multiple_Mutations)) + 
+  geom_violin(alpha = 0.5, position = position_nudge(x = 0.2)) +
+  geom_boxplot(aes(x = ifelse(Multiple_Mutations == 1, 0.2, -0.2)), 
+               width = 0.05, fill = "white", color = "black", position = position_nudge(x = 0.2)) +  labs(x = "", y = "Rezidiv", fill = "Multiple Mutations") +
+  scale_fill_manual(values = c("lightblue", "pink"), 
+                    labels = c("No", "Yes")) +
+  theme_minimal()+
+  theme(legend.title = element_text(size = 10))+
+  theme(axis.title = element_text(size = 14),
+        axis.text.y = element_text(angle = 0, hjust = 0.5, vjust = 0.35, face = "italic", size = 16),
+        plot.title = element_text(size = 20, face = "bold"),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 16))->p.violin.Rezidiv
+
+png("output/figures/SC-p.violin.Rezidiv.png",width=10, height=10,units="in",res=500,type="cairo")
+p.violin.Rezidiv
+dev.off()
+
+
+
+
+
