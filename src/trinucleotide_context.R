@@ -148,8 +148,8 @@ gr.dbs$ALT <- DNAStringSetList(DNAStringSetList(as.list(gr.dbs$ALT)))
 
 ##SNV contexts
 ref_genome <- "BSgenome.Hsapiens.UCSC.hg38"
+hg19 <- "BSgenome.Hsapiens.UCSC.hg19"
 
-mut_context(gr.snv,ref_genome)
 
 split(gr.snv,as.factor(gr.snv$compartment)) -> grl.comp.sbs
 mut_mat.sbs <- mut_matrix(grl.comp.sbs, ref_genome = ref_genome)
@@ -164,22 +164,19 @@ dev.off()
 split(gr.dbs,as.factor(gr.dbs$compartment)) -> grl.comp.dbs
 dbs_context <- get_dbs_context(grl.comp.dbs)
 dbs_counts <- count_dbs_contexts(dbs_context)
-plot_dbs_contexts(dbs_counts, same_y = TRUE)
+plot_dbs_contexts(dbs_counts, same_y = TRUE) -> p.dbs
 
 png("output/figures/mut_dbs.png",width=10, height=4,units="in",res=500,type="cairo")
 p.dbs
 dev.off()
 
-##indel context
-split(gr.indel,as.factor(gr.indel$compartment)) -> grl.comp.indel
-plot_indel_contexts(count_indel_contexts(get_indel_context(grl.comp.indel,ref_genome)))
 
 
 ##mut type occurences
 type_occurrences <- mut_type_occurrences(grl.comp.sbs,ref_genome) 
-p1 <- plot_spectrum(type_occurrences,by=c("cf","wb"))
+p1 <- plot_spectrum(type_occurrences,by=c("cf","wb"),CT=TRUE)
 
-png("output/figures/type_occ.png",width=3, height=4,units="in",res=500,type="cairo")
+png("output/figures/type_occ.png",width=5, height=3,units="in",res=500,type="cairo")
 p1
 dev.off()
 
@@ -225,23 +222,18 @@ plot_contribution(fit_dbs$contribution[select_dbs,],
                   coord_flip = FALSE,
                   mode = "relative")
 
+##Indel context 
 ##create chain (hg38 -> hg19) for liftover
 path = system.file(package="liftOver", "extdata", "hg38ToHg19.over.chain")
 ch = import.chain(path)
 ch
 
 ##lift over gr.test from hg38 to hg19
-
 gr.indel_19 <- liftOver(grl.comp.indel,ch)
 unlist(gr.test_19) -> gr.test_19
 genome(gr.indel_19) <- "hg19"
 
 
-
-mut.to.sigs.input(mut.ref = ., 
-                    sample.id = "sample.id", 
-                    chr = "chr", 
-                    pos = "pos", 
-                    ref = "ref", 
-                    alt = "alt") -> test
-
+##indel context
+plot_indel_contexts(count_indel_contexts(get_indel_context(gr.indel_19,hg19)))
+plot_main_indel_contexts(count_indel_contexts(get_indel_context(gr.indel_19,hg19)))
