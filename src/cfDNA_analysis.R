@@ -268,7 +268,6 @@ png("output/figures/p.cfonly.category.png",width=10, height=10,units="in",res=50
 p.cfonly.category
 dev.off()
 
-
 ##PLOTs
 nop <- ids%>%
   filter(Visite == "C1D1" & Material == "cf")%>%
@@ -903,8 +902,6 @@ ATMandCHEK2_Cosmic <- ATMandCHEK2 %>%
     str_detect(cosmic92_coding, "lymphoid") ~ "CH",
     TRUE ~ NA_character_
   ))
-
-
 
 
 #####  how many counts per sample ####

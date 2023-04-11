@@ -139,6 +139,3 @@ save.image("data/interim/seqdata_filtered_cf.RData")
 
 filename <- paste("output/filtered_results_c1d1_cf",Sys.Date(),".xlsx",sep="")
 write.xlsx(df.filtered_cf_PARpi,filename,sheetName = "filtered_results",append=TRUE)
-
-
-
