@@ -30,6 +30,7 @@ load('data/interim/hotspots.RData')
 
 ######## Get Patient ids
 source("src/ids.R")
+source("src/global_functions_themes.R")
 
 ##HRD genes
 hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3", "BRCA1", "BRCA2")

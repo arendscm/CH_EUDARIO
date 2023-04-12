@@ -80,6 +80,7 @@ df %>%
 
 #### serial samples dynamics plot ####
 df.eot %>% 
+  filter(is.element(Patient.ID,c("4202011","4207004","4202001","4221010")))%>%
   filter(n.material>1)%>%
   filter(ExonicFunc != "synonymous SNV") %>%
   filter(Func == "exonic"|Func == "splicing"|Func == "exonic;splicing") %>%
@@ -99,16 +100,16 @@ df.eot%>%
   geom_line(aes(x=Visite,y=TVAF,group=position,color=Gene),size=0.5,na.rm=FALSE) + 
   facet_wrap(~ Patient.ID, ncol=6, scales="free", dir="h") +
   scale_y_continuous(limits = c(0,0.32)) +
-  labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
+  labs(x="Timepoint",y="Variant allele frequency",colour="Mutated Gene") +
   theme_minimal()-> p.serial
 
-png("output/figures/p.serial.png",width=12, height=8,units="in",res=500,type="cairo")
+png("output/figures/p.serial.png",width=8, height=2,units="in",res=500,type="cairo")
 p.serial
 dev.off()
 
 ##Examples
 df.eot %>% 
-  filter(is.element(Patient.ID,c("4221010","4202008","4202016")))%>%
+  filter(is.element(Patient.ID,c("4202011","4207004","4202001","4221010")))%>%
   filter(n.material>1)%>%
   filter(ExonicFunc != "synonymous SNV") %>%
   filter(Func == "exonic"|Func == "splicing"|Func == "exonic;splicing") %>%
@@ -119,13 +120,13 @@ df.eot %>%
   mutate(maxVAF = max(TVAF)) %>%
   data.frame()%>%
   filter(maxVAF > 0.008) %>%
-  filter(TVAF < 0.38) %>%
+  filter(TVAF < 0.45) %>%
   filter(Gene!="CEBPA")%>%
   ggplot() + 
   geom_point(aes(x=Visite,y=TVAF,color=Gene,group=Patient.ID),size=1 ,na.rm=FALSE) + 
   geom_line(aes(x=Visite,y=TVAF,group=position,color=Gene),size=0.5,na.rm=FALSE) + 
   facet_wrap(~ Patient.ID, ncol=6, scales="free", dir="h") +
-  scale_y_continuous(limits = c(0,0.26)) +
+  scale_y_continuous(limits = c(0,0.45)) +
   labs(x="Timepoint",y="Variant allele frequency",colour="Mutated Gene") +
   theme_minimal()-> p.serial
 

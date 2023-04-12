@@ -102,7 +102,10 @@ inner_join(mutID.func,mutID.count) %>%
   filter(snp == FALSE) %>%
   #full_join(.,inner_join(df,mutID.tag.true))%>%
   filter(ExonicFunc != "synonymous SNV") %>% 
+<<<<<<< HEAD
   filter(Gene %in% hrd_genes | Gene %in% ovarian_cancer_genes)%>%
+=======
+>>>>>>> 8c4a1c06d71fd61ed07d079c19fe7de6cbc61b1e
   group_by(Sample) %>% 
   mutate(n.mut.patient = n()) %>% 
   data.frame %>%
@@ -110,16 +113,31 @@ inner_join(mutID.func,mutID.count) %>%
   mutate(HRD = is.element(Gene,hrd_genes))%>%
   mutate(PARPi_actionable = is.element(Gene,PARPi_actionable_genes))%>%
   mutate(OvarianCancerGene = is.element(Gene,ovarian_cancer_genes))%>%
+<<<<<<< HEAD
   mutate(CH_gene = is.element(Gene,ch_genes))-> df.filtered_cf 
+=======
+  mutate(CH_gene = is.element(Gene,ch_genes))%>%
+  filter(!is.element(Sample.ID, failedSamples))-> df.filtered_cf
+>>>>>>> 8c4a1c06d71fd61ed07d079c19fe7de6cbc61b1e
 
 ##hier kann man noch weiter filtern, hohe mutfreqs rausschmeißen, nur HRD Gene anschauen etc. und dann sollte es erstmal eine überschaubare menge an mutationen sein. Finetuning müssen wir dann noch schauen
 ##ich hab jetzt nur hrd und ovarian cancer genes, da wir über diese Tabelle ja die Patienten als hrd pos identififizieren... dazu gehören dann auch die pathogenen BRCA 1 & 2 germline mutations
 
+<<<<<<< HEAD
 rm(mutID.cosmic)+
 rm(mutID.count)+
 rm(mutID.freq)+
 rm(mutID.func)+
 rm(mutID.qual)+
+=======
+rm(mutID.count)+
+rm(mutID.freq)+
+rm(mutID.func)+
+rm(mutID.cosmic)+
+rm(mutID.tp53)+
+rm(mutID.qual)+
+rm(ids)+
+>>>>>>> 8c4a1c06d71fd61ed07d079c19fe7de6cbc61b1e
 rm(mm_hotspots)+
 rm(ch_genes)+
 rm(hrd_genes)+
@@ -128,8 +146,17 @@ rm(ovarian_cancer_genes)+
 rm(df.backup)+
 rm(ids)+
 rm(df)
+rm(df.backup)
 
 save.image("data/interim/seqdata_filtered_cf.RData")
 
+<<<<<<< HEAD
 filename <- paste("output/filtered_results_c1d1_cf_",Sys.Date(),".xlsx",sep="")
 write.xlsx(df.filtered_cf,filename,sheetName = "filtered_results",append=TRUE)
+=======
+filename <- paste("output/filtered_results_c1d1_cf",Sys.Date(),".xlsx",sep="")
+write.xlsx(df.filtered_cf_PARpi,filename,sheetName = "filtered_results",append=TRUE)
+
+
+
+>>>>>>> 8c4a1c06d71fd61ed07d079c19fe7de6cbc61b1e
