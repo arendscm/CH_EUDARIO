@@ -16,6 +16,7 @@ library(base)
 library(reshape)
 library(tidyr)
 library(stringr)
+library(xlsx)
 
 ########   set working directory #####
 #setwd('H:/Meine Ablage')
@@ -79,5 +80,9 @@ rm(brcaexchange)
 rm(df)
 rm(ids)
 
+left_join(df.hrd_germline,pathogenic_mutID,by = "mutID")->df.hrd_germline
+
 save.image("data/interim/brca.RData")
 
+filename="output/BRCA_and_HRD_GermlineStatus.xlsx"
+write.xlsx(df.hrd_germline,filename,sheetName="HRD", append=TRUE)

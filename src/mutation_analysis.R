@@ -29,6 +29,7 @@ library(RColorBrewer)
 ########  Load preprocessed sequencing data
 #df <- read.csv('data/interim/mutationcalls.csv')
 load('data/interim/seqdata_filtered.RData')
+df.filtered.c1d1 <-df.filtered.c1d1[is.na(df.filtered.c1d1$replicate),]
 
 ######## Get Patient ids
 source("src/ids.R")
@@ -61,8 +62,7 @@ ch_genes <- c("DNMT3A", "TET2" ,  "JAK2" ,  "ASXL1" , "SF3B1" , "SRSF2" , "TP53"
 df.filtered.c1d1 %>% 
   filter(tag == "true") %>%
   filter(TVAF >= 0.01) %>%
-  #filter(Gene %in% hrd_genes)%>%  #only HRD panel, when we say: this is the prevalence plot for HRD in these patients
-  #filter(Gene %in% ch_genes)%>%  #only CH panel, when we say: this is the prevalence plot for CH in these patient
+  #filter(Gene %in% ch_genes)%>%  #only CH panel, when we say: this is the prevalence plot for CH in these patients
   dplyr::select(Sample, Gene) %>% 
   data.frame %>% 
   unique %>% 
@@ -88,7 +88,7 @@ prev.table  %>%
   scale_fill_manual(values = c("non HRD" = "#486081", "HRD" = "#88acd4")) -> p.mutprev
 p.mutprev
 
-png("output/figures/mutprev.png",width=8, height=6,units="in",res=500,type="cairo")
+png("output/figures/mutprev.png",width=6, height=6,units="in",res=500,type="cairo")
 p.mutprev
 dev.off()
 
@@ -112,8 +112,7 @@ ggplot(mutation_counts, aes(x = Gene, y = count, fill = "Mutation Counts")) +
   ylab("Number of mutations") +
   ggtitle("Mutation counts per gene") +
   scale_x_discrete(limits = mutation_counts$Gene) + # set x-axis limits based on sorted order
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
-  my_theme() -> p.no.mut
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) -> p.no.mut
 
 png("output/figures/no.mut.png",width=6, height=6,units="in",res=500,type="cairo")
 p.no.mut
@@ -172,6 +171,7 @@ df.filtered.c1d1 %>%
 names(prev.table_brca0)<- c( "Gene","Freq","prev","brca")
 
 #prevalences in brca mutated patients
+
 df.filtered.c1d1 %>% 
   filter(tag == "true") %>%
   filter(TVAF >= 0.01) %>%
@@ -212,7 +212,7 @@ p.mutprev_path
 dev.off()
 
 ########   No of mutations per patient ####
-df.filtered.c1d1%>%
+df.filtered%>%
   filter(tag == "true" & TVAF >= 0.01)->test
 mut_count <- test %>%
   group_by(Patient.ID) %>%
@@ -224,14 +224,13 @@ mutation_barplot <- mut_count %>%
 
 # Create the bar plot with ggplot2
 ggplot(mutation_barplot, aes(x = mutations, y = num_patients)) +
-  geom_bar(stat = "identity", fill = "#486081") +
+  geom_bar(stat = "identity", fill = "steelblue") +
   labs(x = "Number of Mutations", y = "Number of Patients")+
   scale_x_continuous(limits = c(0.5, 8.5), breaks = 1:8)+
-  #ggtitle("No. of mutations per patient [>1%]")+
-  my_theme()->p.nom
+  ggtitle("No. of mutations per patient [>1%]")->p.nom
 p.nom
 
-png("output/figures/no of mutations.png",width=4, height=3,units="in",res=500,type="cairo")
+png("output/figures/no of mutations.png",width=6, height=6,units="in",res=500,type="cairo")
 p.nom
 dev.off()
 
@@ -405,7 +404,7 @@ df.genefreq %>%
 p.mutfreq
 
 
-png("output/figures/mutfreq.png",width=8, height=6,units="in",res=500,type="cairo")
+png("output/figures/mutfreq.png",width=6, height=6,units="in",res=500,type="cairo")
 p.mutfreq
 dev.off()
 

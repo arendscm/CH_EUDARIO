@@ -36,27 +36,23 @@ source("src/global_functions_themes.R")
 
 ##interesting gene groups
 variables <- c("Patient.ID","Sample_orig","mutID","position","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "GeneDetail", "ExonicFunc", "AAChange", "cytoBand","readDepth", "TR1", "TR1_plus", "TR1_minus", "TR2", "TR2_plus", "TR2_minus", "TVAF", "AF", "avsnp150","cosmic92_coding","snp","mutFreq","p.binom","n.mut","n.material","sum_cf","sum_wb","Material","tag", "Patmut")
-ch_genes_without_HRD <- c("DNMT3A","TET2","ASXL1","CBL","CEBPA","GNB1","GNAS","IDH1","IDH2","JAK2","SF3B1","SRSF2","U2AF1;U2AF1L5")
+ch_genes <- c("DNMT3A","TET2","ASXL1","CBL","CEBPA","GNB1","GNAS","IDH1","IDH2","JAK2","SF3B1","SRSF2","U2AF1;U2AF1L5")
 tp53_genes <- c("TP53")
 ppm1d_genes <- c("PPM1D")
 brca_genes <- c("BRCA1","BRCA2")
 hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3")
-failedSamples <-c('OvCA_44_C1D1_cf','OvCA_45_C1D1_cf','OvCA_46_C1D1_cf','OvCA_48_C1D1_cf','OvCA_50_C1D1_cf','OvCA_54_C1D1_cf','OvCA_93_C1D1_cf',
-                  'OvCA_11_C1D1_cf','OvCA_40_C1D1_cf','OvCA_53_C1D1_cf','OvCA_65_C1D1_cf')
-Categories<-c('CH','HRD','other', 'TP53')
+
 #data frame with mutation calls from cfDNA             
 df %>% 
   filter(Material=="cf") %>% 
   filter(Visite == "C1D1")%>%
   filter(is.na(replicate))%>%
-  filter(!is.element(Sample.ID, failedSamples))%>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_"))-> df.cf
 df %>% 
   filter(Material=="wb") %>% 
   filter(Visite == "C1D1")%>%
   filter(is.na(replicate))%>%
-  filter(!is.element(Sample.ID, failedSamples))%>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_"))-> df.wb
 
@@ -69,7 +65,6 @@ df %>%
   filter(is.na(replicate))%>%
   filter(Material=="wb") %>% 
   filter(Visite == "C1D1")%>%
-  filter(!is.element(Sample.ID, failedSamples))%>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_")) -> df.cf_wb
 
@@ -171,17 +166,17 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
                                             ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
   #filter(gene != "other") %>%
   mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
-  filter(p.binom.x <= -Inf) %>%
+  filter(p.binom.x <= -10) %>%
   filter(Func.x == "exonic"|Func.x == "splicing"|Func.x == "exonic;splicing") %>%
   filter(ExonicFunc.x != "synonymous SNV")%>%
   filter(AF.x<0.1)%>%
   filter(snp.x==FALSE)%>%
   filter(TVAF.x>0.005|TVAF.y>0.005)%>%
   filter(TR2.y > 19|TR2.x>19)%>%
-  ggplot(., aes(x=TVAF.x,y=TVAF.y,
+  ggplot(aes(x=TVAF.x,y=TVAF.y,
              color=gene,
              #shape=ExonicFunc.x
-             )) +
+  )) +
   geom_point(size=2)+
   geom_abline(slope=1,size=1,linetype=2,alpha=0.5)+
   geom_abline(slope=1/3,size=1,linetype=3,alpha=0.5,intercept=-2)+
@@ -194,97 +189,9 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   xlab("cfDNA VAF")+
   theme_minimal()->p.cf.corr
 
-png("output/figures/p.cf.corr.filter1.png",width=10, height=10,units="in",res=500,type="cairo")
+png("output/figures/p.cf.corr.filter1.png",width=10, height=6,units="in",res=500,type="cairo")
 p.cf.corr
 dev.off()
-
-
-#### below line composition analysis
-load("data/interim/seqdata_filtered_cf.RData")
-
-df_filtered_cf%>%
-  filter(tag == "true" | tag == "tumour")%>%
-  mutate(gene = ifelse(is.element(Gene, ch_genes_without_HRD), "CH",
-                       ifelse(is.element(Gene, tp53_genes), "TP53",
-                              ifelse(is.element(Gene, hrd_genes), "HRD",
-                                     ifelse(is.element(Gene, brca_genes), "BRCA",
-                                            ifelse(is.element(Gene, ppm1d_genes), "PPM1D", "other"))))))%>%
-  mutate(cfID=paste(Patient.ID,position,sep="_"))%>%
-  left_join(.,df.cf_wb, by= "cfID")%>%
-  filter(TVAF.y < TVAF.x/3 | is.na(TVAF.y))%>%
-  filter(TVAF.y < 0.001| is.na(TVAF.y))-> df.cf_only
-
-
-# Create a table of gene counts
-gene_counts <- table(df.cf_only$gene)
-
-# Calculate the percentage of variants in each gene category
-gene_percents <- prop.table(gene_counts) * 100
-
-# Convert the table object to a data frame
-gene_percents_df <- as.data.frame(gene_percents)
-
-# Create a bar plot of the percentage of variants in each gene category
-ggplot(gene_percents_df, aes(x = Var1, y = Freq, fill = Var1)) +
-  geom_bar(stat = "identity", fill = "#486081") +
-  labs(title = "Percentage of Variants by Gene Category",
-       x = "Gene Category",
-       y = "Percentage")+
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.35, face = "italic", size = 16),
-        axis.text.y = element_text(angle = 0, hjust = 0.5, vjust = 0.35, face = "italic", size = 16),
-        plot.title = element_text(size = 20, face = "bold")) ->p.cfonly.category
-
-png("output/figures/p.cfonly.category.png",width=10, height=10,units="in",res=500,type="cairo")
-p.cfonly.category
-dev.off()
-
-
-##PLOTs
-nop <- ids%>%
-  filter(Visite == "C1D1" & Material == "cf")%>%
-  filter(!is.element(Sample.ID, failedSamples))%>%
-  select(.,Patient.ID)%>%
-  unique()%>%nrow
-
-########   Gene Mutation Prevalence Plot (plots number of gene-x-mutated patients)  #####
-for (x in Categories)
-{
-  df.cf_only%>% 
-    filter(gene == x)%>%
-    dplyr::select(Sample.x, Gene.x)%>%
-    data.frame %>% 
-    unique %>% 
-    dplyr::select(Gene.x) %>% 
-    table %>% 
-    data.frame %>% 
-    filter(Freq>0) %>% 
-    mutate(prev = Freq/nop) %>% 
-    arrange(prev) -> prev.table
-  names(prev.table)<- c("Gene","Freq","prev")
-  
-  prev.table %>%
-    ggplot(aes(x = reorder(Gene, Freq), y = prev)) +
-    geom_bar(stat = "identity", width = 0.6, fill = "#486081") +
-    geom_text(aes(label = Freq), hjust = -1, vjust = 0.35, size = 4) +
-    xlab("") +
-    scale_y_continuous(labels = percent, limits = c(0, 0.6), position = "right") +
-    ylab("Gene Mutation Prevalence [%]") +
-    my_theme() +
-    theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.35, face = "italic", size = 16),
-          axis.text.x = element_text(angle = 0, hjust = 1, vjust = 0.35, face = "italic", size = 14)) +
-    coord_flip()  -> p.mutprev.composition
-  
-  
-  png(paste0("output/figures/",x,"_cfonly_composition.png"),
-      width=10,
-      height=10,
-      units="in",
-      res=500,
-      type="cairo")
-  print(p.mutprev.composition)
-  dev.off()
-}
-
 
 
 ##### Correlation plot Filter 1 - TP53 mutations only 
@@ -360,7 +267,7 @@ nop<-df.filtered.cf%>%
   unique()
 source("src/global_functions_themes.R")
 
-df_filtered_cf %>% 
+df.filtered.cf %>% 
   #filter(Gene %in% ch_genes)%>%  #only CH panel, when we say: this is the prevalence plot for CH in these patients
   dplyr::select(Sample, Gene) %>% 
   data.frame %>% 
@@ -955,74 +862,6 @@ g3Lollipop(df.lolli%>%filter(Hugo_Symbol=="BRCA2"),
            save.png.btn	= FALSE,
            save.svg.btn = FALSE,
            output.filename = "cbioportal_theme")
-
-
-#Confoundation by CH in HRD diagnostic ->ATM and CHEK2
-ATMandCHEK2%>%
-  filter(Gene == "ATM"| Gene == "CHEK2")%>%
-  filter(tag == "true" | tag == "tumour")%>%
-  mutate(origin = ifelse(tag == "true", "CH", 
-                         ifelse(tag == "tumour", "tumour", NA)))->ATMandCHEK2
-
-# Create a table of tag counts
-tag_counts <- table(ATMandCHEK2$origin)
-
-# Calculate the percentage of variants in each gene category
-tag_percents <- prop.table(tag_counts) * 100
-
-# Convert the table object to a data frame
-tag_percents_df <- as.data.frame(tag_percents)
-
-# Create a bar plot of the percentage of variants in each gene category
-ggplot(tag_percents_df, aes(x = Var1, y = Freq, fill = )) +
-  geom_bar(stat = "identity", fill = "#486081") +
-  labs(title = "Percentage of Tumour or CH derived ATM and CHEK2 variants",
-       x = "Origin",
-       y = "Percentage")+
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.35, face = "italic", size = 18),
-        axis.text.y = element_text(angle = 0, hjust = 0.5, vjust = 0.35, face = "italic", size = 18),
-        plot.title = element_text(size = 16, face = "bold"))->p.origin.hrd
-
-png("output/figures/p.origin.hrd.png",width=10, height=10,units="in",res=500,type="cairo")
-p.origin.hrd
-dev.off()
-
-#how many patients in total?
-select(ATMandCHEK2,Patient.ID, origin)->hrd.diagnostic.pat
-# calculate percentage and count of patients in each category
-df_summary <- hrd.diagnostic.pat %>% 
-  group_by(origin) %>% 
-  summarize(count = n()) %>% 
-  mutate(percentage = count / sum(count))
-
-# create doughnut plot
-ggplot(df_summary, aes(x = "", y = percentage, fill = origin)) +
-  geom_bar(stat = "identity", width = 1) +
-  coord_polar("y", start = 0) +
-  theme_void() +
-  geom_text(aes(label = paste0(count, "\n(", round(percentage * 100), "%)")),
-            position = position_stack(vjust = 0.5), 
-            size = 10, color = "white") +
-  scale_fill_manual(values = c("CH" = "#486081", "tumour" = "lightsteelblue")) +
-  labs(title = "Total of 17 patients ",fill = "Origin")+
-  theme(axis.text.y = element_text(angle = 0, hjust = 0.5, vjust = 0.35, face = "italic", size = 16),
-        plot.title = element_text(size = 20, face = "bold"),
-        legend.text = element_text(size = 14),
-        legend.title = element_text(size = 16))->p.origin.hrd.total.pat
-    
-png("output/figures/p.origin.hrd.total.pat.png",width=10, height=10,units="in",res=500,type="cairo")
-p.origin.hrd.total.pat
-dev.off()
-
-ATMandCHEK2_Cosmic <- ATMandCHEK2 %>% 
-  mutate(COSMIC = case_when(
-    str_detect(cosmic92_coding, "ovary|breast") ~ "Ovary",
-    str_detect(cosmic92_coding, "lymphoid") ~ "CH",
-    TRUE ~ NA_character_
-  ))
-
-
-
 
 #####  how many counts per sample ####
 df.filtered%>%
