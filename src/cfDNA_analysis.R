@@ -42,23 +42,11 @@ tp53_genes <- c("TP53")
 ppm1d_genes <- c("PPM1D")
 brca_genes <- c("BRCA1","BRCA2")
 hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3")
-<<<<<<< HEAD
-
-#data frame with mutation calls from cfDNA             
-=======
 failedSamples <-c('OvCA_44_C1D1_cf','OvCA_45_C1D1_cf','OvCA_46_C1D1_cf','OvCA_48_C1D1_cf','OvCA_50_C1D1_cf','OvCA_54_C1D1_cf','OvCA_93_C1D1_cf',
                   'OvCA_11_C1D1_cf','OvCA_40_C1D1_cf','OvCA_53_C1D1_cf','OvCA_65_C1D1_cf')
 Categories<-c('CH','HRD','other','TP53')
 
 #dataframe with mutation calls from cfDNA             
->>>>>>> 8c4a1c06d71fd61ed07d079c19fe7de6cbc61b1e
-df %>% 
-  filter(Material=="cf") %>% 
-  filter(Visite == "C1D1")%>%
-  filter(is.na(replicate))%>%
-  dplyr::select(all_of(variables)) %>%
-  mutate(cfID=paste(Patient.ID,position,sep="_"))-> df.cf
-<<<<<<< HEAD
 df %>% 
   filter(Material=="wb") %>% 
   filter(Visite == "C1D1")%>%
@@ -68,8 +56,6 @@ df %>%
 
 #anti_join(df.cf, df.wb, by= "cfID")->df.cf_only
 #save(df.cf_only,file="data/interim/df.cf_only.RDATA")
-=======
->>>>>>> 8c4a1c06d71fd61ed07d079c19fe7de6cbc61b1e
 
 #data frame with mutation calls from WB samples that have matched cfDNA samples
 df %>% 
@@ -206,10 +192,39 @@ png("output/figures/p.cf.corr.filter1.png",width=10, height=6,units="in",res=500
 p.cf.corr
 dev.off()
 
-
-<<<<<<< HEAD
 ##### Correlation plot Filter 1 - TP53 mutations only 
-=======
+full_join(df.cf,df.cf_wb,by="cfID") %>% 
+  filter(!is.element(Sample.x,failedSamples))%>%
+  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
+  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
+  mutate(gene = ifelse(is.element(Gene.x,ch_genes_without_HRD),"CH",
+                       ifelse(is.element(Gene.x,tp53_genes),"TP53",
+                              ifelse(is.element(Gene.x,hrd_genes),"HRD",
+                                     ifelse(is.element(Gene.x,brca_genes),"BRCA",
+                                            ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
+  mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
+  filter(p.binom.x == -Inf|p.binom.y == -Inf) %>%
+  filter(Func.x == "exonic"|Func.x == "splicing"|Func.x == "exonic;splicing") %>%
+  filter(ExonicFunc.x != "synonymous SNV")%>%
+  filter(AF.x<0.1)%>%
+  #filter(snp.x==FALSE)%>%
+  filter(TR2.x>19|TR2.y>19) %>% 
+  filter(TVAF.x>0.001|TVAF.y>0.001)%>%
+  filter(Gene.x=="TP53")%>%
+  #filter(cosmic_ovary)%>%
+  ggplot(aes(x=TVAF.x,y=TVAF.y,color=cosmic_ovary))+
+  geom_point(size=4)+
+  geom_abline(slope=1)+
+  scale_color_viridis(discrete=TRUE)+
+  scale_x_log10(limits=c(0.0005,0.5)) +
+  scale_y_log10(limits=c(0.0005,0.5)) +
+  theme_minimal() -> p.TP53_cosmic_cf_wb
+
+png("output/figures/p.TP53_cosmic_cf_wb.png",width=10, height=6,units="in",res=500,type="cairo")
+p.TP53_cosmic_cf_wb
+dev.off()
+
+
 #####  Max: Mutationspectrum for mutations in WB and cf only mutations------------------
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
   filter(!is.element(Sample.x,failedSamples))%>%
@@ -247,9 +262,9 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
 p.mutprev
 
 ###------------------------------------ab hier wird es für mich unübersichtlich
+###----------df.filtered.cf soll im Endeffekt bei cf_variant filtering rauskommen, ich überarbeite das gerade noch, ich lösche das hier wieder, wenn es dann funktioniert
 ### below line composition analysis
 load("data/interim/seqdata_filtered_cf.RData")
-
 df.filtered.cf%>%
   filter(tag == "true" | tag == "tumour")%>%
   mutate(gene = ifelse(is.element(Gene, ch_genes_without_HRD), "CH",
@@ -333,38 +348,6 @@ for (x in Categories)
   dev.off()
 }
 
-#####  Correlation plot Filter 1 - TP53 mutations only --------------------------------------------------
->>>>>>> 8c4a1c06d71fd61ed07d079c19fe7de6cbc61b1e
-full_join(df.cf,df.cf_wb,by="cfID") %>% 
-  filter(!is.element(Sample.x,failedSamples))%>%
-  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
-  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
-  mutate(gene = ifelse(is.element(Gene.x,ch_genes_without_HRD),"CH",
-                       ifelse(is.element(Gene.x,tp53_genes),"TP53",
-                              ifelse(is.element(Gene.x,hrd_genes),"HRD",
-                                     ifelse(is.element(Gene.x,brca_genes),"BRCA",
-                                            ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
-  mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
-  filter(p.binom.x == -Inf|p.binom.y == -Inf) %>%
-  filter(Func.x == "exonic"|Func.x == "splicing"|Func.x == "exonic;splicing") %>%
-  filter(ExonicFunc.x != "synonymous SNV")%>%
-  filter(AF.x<0.1)%>%
-  #filter(snp.x==FALSE)%>%
-  filter(TR2.x>19|TR2.y>19) %>% 
-  filter(TVAF.x>0.001|TVAF.y>0.001)%>%
-  filter(Gene.x=="TP53")%>%
-  #filter(cosmic_ovary)%>%
-  ggplot(aes(x=TVAF.x,y=TVAF.y,color=cosmic_ovary))+
-  geom_point(size=4)+
-  geom_abline(slope=1)+
-  scale_color_viridis(discrete=TRUE)+
-  scale_x_log10(limits=c(0.0005,0.5)) +
-  scale_y_log10(limits=c(0.0005,0.5)) +
-  theme_minimal() -> p.TP53_cosmic_cf_wb
-
-png("output/figures/p.TP53_cosmic_cf_wb.png",width=10, height=6,units="in",res=500,type="cairo")
-p.TP53_cosmic_cf_wb
-dev.off()
 
 #####  detecting BRCA mutations in cfDNA (this will later on also be important when looking for BRCA reversion mutations)####
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
@@ -858,7 +841,6 @@ png("output/figures/p.cf.serialC7.png",width=6, height=4,units="in",res=500,type
 p.cf.serial
 dev.off()
 
-<<<<<<< HEAD
 #####  Lolliplot for TP53 muts------------------------------------------------------------------------
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
   filter(!is.element(Sample.x,mismatch))%>%
@@ -1001,9 +983,11 @@ g3Lollipop(df.lolli%>%filter(Hugo_Symbol=="BRCA2"),
            save.png.btn	= FALSE,
            save.svg.btn = FALSE,
            output.filename = "cbioportal_theme")
-=======
 
-#Confoundation by CH in HRD diagnostic ->ATM and CHEK2
+
+
+
+#### Confoundation by CH in HRD diagnostic ->ATM and CHEK2  ####
 ATMandCHEK2%>%
   filter(Gene == "ATM"| Gene == "CHEK2")%>%
   filter(tag == "true" | tag == "tumour")%>%
@@ -1067,9 +1051,6 @@ ATMandCHEK2_Cosmic <- ATMandCHEK2 %>%
     TRUE ~ NA_character_
   ))
 
-
-
->>>>>>> 8c4a1c06d71fd61ed07d079c19fe7de6cbc61b1e
 
 #####  how many counts per sample ####
 df.filtered%>%
