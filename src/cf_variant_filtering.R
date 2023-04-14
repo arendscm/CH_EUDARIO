@@ -75,13 +75,6 @@ df %>%
   filter((mutFreq < max(0.05*n.lane,5))&((p.binom<= -10)&med.vaf < 0.44))%>% #filtert nach Häufigkeit und binomialer Wahrscheinlichkeit
   dplyr::select(mutID) -> mutID.freq
 
-# rescue ASXL1 dupG mutations <- this step is no longer needed, when we use p.binom 
-#df %>%
-#  filter(str_detect(Start,'32434638'))%>%filter(str_detect(AAChange,'ASXL1')) %>%
-#  mutate(dev.med = ((TVAF - median(TVAF))/sd(TVAF))) %>% #calculate deviation from median in terms of standarddeviations
-#  filter(dev.med > 1) %>%    #to be discussed
-#  dplyr::select(mutID) -> mutID.asxl1
-
 ## rescue hotspots/mutations reported in cosmic data base for OVCa
 df %>%
   filter(str_detect(cosmic92_coding,"ovary")) %>%
@@ -91,7 +84,6 @@ df %>%
   filter(TVAF >0.001) %>%
   filter(!snp)%>%
   dplyr::select(mutID)-> mutID.cosmic
-
 
 #filtering
 ##somatic variants
@@ -118,6 +110,7 @@ inner_join(mutID.func,mutID.count) %>%
 rm(mutID.count)+
 rm(mutID.freq)+
 rm(mutID.func)+
+rm(mutID.qual)+
 rm(mutID.cosmic)+
 rm(mutID.tp53)+
 rm(mm_hotspots)+
@@ -125,18 +118,14 @@ rm(ch_genes)+
 rm(hrd_genes)+
 rm(PARPi_actionable_genes)+
 rm(ovarian_cancer_genes)+
+rm(failedSamples)+
 rm(df.backup)+
 rm(ids)+
 rm(df)
-rm(df.backup)
 
 save.image("data/interim/seqdata_filtered_cf.RData")
 
-
 filename <- paste("output/filtered_results_c1d1_cf",Sys.Date(),".xlsx",sep="")
-<<<<<<< HEAD
-write.xlsx(df.filtered_cf_PARpi,filename,sheetName = "filtered_results",append=TRUE)
-=======
-write.xlsx(df.filtered_cf_PARpi,filename,sheetName = "filtered_results",append=TRUE)
 
->>>>>>> fb277cfecb8d3715072e8e118a12aef119c468a9
+write.xlsx(df.filtered_cf,filename,sheetName = "filtered_results",append=TRUE)
+
