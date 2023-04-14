@@ -14,6 +14,8 @@
 library(base)
 library(dplyr)
 library(tidyr)
+library(readxl)
+library(xlsx)
 
 ##### Sample Availability  ####
 Sample_registry <- read_excel("data/external/Sample Registry.xlsx", sheet = "Sample_registry_Overview", col_types = c("text", "numeric", "text", "text"))
@@ -59,25 +61,39 @@ dev.off()
 #Sample Registry -> what timepoint/sample do we have from each patient
 Ovarial_Ca_LibPrep <- read_excel("data/external/Ovarial-Ca_LibPrep.xlsx", 
                                  sheet = "Pooling", skip=1)
-select(Ovarial_Ca_LibPrep,'External Pat ID', 'Visite','Internal Pat ID', 'External Sample ID')->pool
+source("src/ids.R")
+select(Ovarial_Ca_LibPrep,'External Pat ID', 'Visite','Internal Sample ID', 'External Sample ID')->pool
+
+select(ids,Sample.ID,'External Sample ID', replicate, Int.Patient.ID)->id
+full_join(id,pool,by="External Sample ID")%>%
+  filter(is.na(replicate))->pool
 
 pool%>%
-  filter(Visite=="C1D1")->C1D1
+  filter(Visite=="C1D1-wb")->C1D1
 pool%>%
-  filter(Visite=="EOT")->EOT
+  filter(Visite=="EOT-wb")->EOT
 pool%>%
-  filter(Visite=="cf-C1D1")->cfC1D1
+  filter(Visite=="C1D1-cf")->cfC1D1
 pool%>%
-  filter(Visite=="cf-C7D1")->cfC7D1
+  filter(Visite=="C7D1-cf")->cfC7D1
 pool%>%
-  filter(Visite=="cf-EOT")->cfEOT
+  filter(Visite=="EOT-cf")->cfEOT
+pool%>%
+  filter(Visite=="UE-cf")->cfUE
+pool%>%
+  filter(Visite == "CxD1-cf")->cfCxD1
 
 full_join(C1D1,EOT, by='External Pat ID') %>%
   full_join(., cfC1D1, by= 'External Pat ID')%>%
   full_join(., cfC7D1, by= 'External Pat ID')%>%
-  full_join(., cfEOT, by= 'External Pat ID')->list
+  full_join(., cfEOT, by= 'External Pat ID')%>%
+  full_join(.,cfUE,by='External Pat ID')%>%
+  full_join(.,cfCxD1, by='External Pat ID')->list
+list%>%
+  unique()->list
 
-filename="data/interim/sample_registry.csv"
+filename="data/external/Sample Registry_test.xlsx"
+write.xlsx(list,filename, sheetName="New Sample registry", append=TRUE)
 write.csv(list, filename)
 rm(C1D1)
 rm(cfC1D1)
@@ -96,13 +112,18 @@ komb <- read_excel("data/external/Sample Registry.xlsx",
                                                         "text", "text", "text"))
 #IntExt aus sample registry
 IntExt <- read_excel("data/external/Sample Registry.xlsx", 
-                     sheet = "Sample IDs")
-left_join(komb,IntExt, by='External Pat ID')->komb2
+                     sheet = "Int-Ext ID")
+komb%>%
+  mutate(Patient.ID = as.character(Patient.ID))->komb
+IntExt%>%
+  mutate(Patient.ID = as.character(Patient.ID))->IntExt
+left_join(komb,IntExt, by='Patient.ID')->komb2
 
-filename="Sample Registry/IntExtPatID.xlsx"
-#write.xlsx(komb2, filename, sheetName = "list", append=TRUE)
+filename="test3.xlsx"
+write.xlsx(komb2, filename, sheetName = "list", append=TRUE)
 rm(komb2)
 rm(IntExt)
 rm(komb)
 rm(filename)
+
 

@@ -60,7 +60,7 @@ df %>%
 
 ## read count criteria
 df %>%
-  filter(readDepth > 100, TVAF > 0.01, TR2>19) %>%
+  filter(readDepth > 100, TR2 > 19, TVAF > 0.005) %>%
   dplyr::select(mutID) -> mutID.count
 
 ## quality criteria
@@ -75,28 +75,22 @@ df %>%
   filter((mutFreq < max(0.05*n.lane,5))&((p.binom<= -10)&med.vaf < 0.44))%>% #filtert nach Häufigkeit und binomialer Wahrscheinlichkeit
   dplyr::select(mutID) -> mutID.freq
 
+# rescue ASXL1 dupG mutations <- this step is no longer needed, when we use p.binom 
+#df %>%
+#  filter(str_detect(Start,'32434638'))%>%filter(str_detect(AAChange,'ASXL1')) %>%
+#  mutate(dev.med = ((TVAF - median(TVAF))/sd(TVAF))) %>% #calculate deviation from median in terms of standarddeviations
+#  filter(dev.med > 1) %>%    #to be discussed
+#  dplyr::select(mutID) -> mutID.asxl1
+
 ## rescue hotspots/mutations reported in cosmic data base for OVCa
 df %>%
   filter(str_detect(cosmic92_coding,"ovary")) %>%
   filter(FisherScore < 20) %>% 
   filter(StrandBalance2 != 1 & StrandBalance2 != 0) %>%     #filter out mutations only seen on one strand
-  filter(TR2 > 9) %>%
+  filter(TR2 > 15) %>%
   filter(TVAF >0.001) %>%
-  filter(p.binom< -10)%>%
-  filter(mutFreq < 0.1*n.lane)%>%
+  filter(!snp)%>%
   dplyr::select(mutID)-> mutID.cosmic
-
-## rescue TP53 mutations OVCa
-df %>%
-  filter(Gene == "TP53") %>%
-  filter(ExonicFunc != "synonymous SNV")%>%
-  filter(FisherScore < 20) %>% 
-  filter(StrandBalance2 != 1 & StrandBalance2 != 0) %>%     #filter out mutations only seen on one strand
-  filter(TR2 > 14) %>%
-  filter(TVAF >0.001) %>%
-  filter(p.binom< -10)%>%
-  filter(mutFreq < 0.1*n.lane)%>%
-  dplyr::select(mutID)-> mutID.tp53
 
 
 #filtering
@@ -106,10 +100,9 @@ inner_join(mutID.func,mutID.count) %>%
   inner_join(.,mutID.qual) %>% 
   inner_join(.,df) %>% 
   full_join(.,inner_join(df,mutID.cosmic))%>%
-  full_join(.,inner_join(df,mutID.tp53))%>%
-  filter(snp == FALSE&!(TVAF > 0.4 & n.visite>1)) %>% #filters out SNPs and germline mutations
-  #full_join(.,inner_join(df,mutID.tag.true))%>%
+  filter(snp == FALSE) %>%
   filter(ExonicFunc != "synonymous SNV") %>% 
+  filter(Gene %in% hrd_genes | Gene %in% ch_genes)%>%
   group_by(Sample) %>% 
   mutate(n.mut.patient = n()) %>% 
   data.frame %>%
@@ -121,21 +114,28 @@ inner_join(mutID.func,mutID.count) %>%
   filter(!is.element(Sample.ID, failedSamples))-> df.filtered_cf
 
 ##hier kann man noch weiter filtern, hohe mutfreqs rausschmeißen, nur HRD Gene anschauen etc. und dann sollte es erstmal eine überschaubare menge an mutationen sein. Finetuning müssen wir dann noch schauen
-##ich hab jetzt nur hrd und ovarian cancer genes, da wir über diese Tabelle ja die Patienten als hrd pos identififizieren... dazu gehören dann auch die pathogenen BRCA 1 & 2 germline mutations
 
 rm(mutID.count)+
 rm(mutID.freq)+
 rm(mutID.func)+
 rm(mutID.cosmic)+
 rm(mutID.tp53)+
-rm(mutID.qual)+
-rm(ids)+
 rm(mm_hotspots)+
-rm(tempdata)+
+rm(ch_genes)+
+rm(hrd_genes)+
+rm(PARPi_actionable_genes)+
+rm(ovarian_cancer_genes)+
+rm(df.backup)+
+rm(ids)+
 rm(df)
 rm(df.backup)
 
 save.image("data/interim/seqdata_filtered_cf.RData")
 
+
 filename <- paste("output/filtered_results_c1d1_cf",Sys.Date(),".xlsx",sep="")
+<<<<<<< HEAD
 write.xlsx(df.filtered_cf_PARpi,filename,sheetName = "filtered_results",append=TRUE)
+=======
+write.xlsx(df.filtered_cf_PARpi,filename,sheetName = "filtered_results",append=TRUE)
+

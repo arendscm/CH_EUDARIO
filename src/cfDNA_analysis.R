@@ -26,6 +26,7 @@ library(ggpubr)
 #df <- read.csv('data/interim/mutationcalls.csv')
 load('data/interim/seqdata.RData')
 load('data/interim/seqdata_filtered.RData')
+load('data/interim/seqdata_filtered_cf.RData')
 
 ######## Get Patient ids
 source("src/ids.R")
@@ -37,13 +38,14 @@ source("src/global_functions_themes.R")
 
 ##interesting gene groups
 variables <- c("Patient.ID","Sample_orig","mutID","position","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "GeneDetail", "ExonicFunc", "AAChange", "cytoBand","readDepth", "TR1", "TR1_plus", "TR1_minus", "TR2", "TR2_plus", "TR2_minus", "TVAF", "AF", "avsnp150","cosmic92_coding","snp","mutFreq","p.binom","n.mut","n.material","sum_cf","sum_wb","Material","tag", "Patmut")
-ch_genes_without_HRD <- c("DNMT3A","TET2","ASXL1","CBL","CEBPA","GNB1","GNAS","IDH1","IDH2","JAK2","SF3B1","SRSF2","U2AF1;U2AF1L5")
+ch_genes <- c("DNMT3A","TET2","ASXL1","CBL","CEBPA","GNB1","GNAS","IDH1","IDH2","JAK2","SF3B1","SRSF2","U2AF1;U2AF1L5")
 tp53_genes <- c("TP53")
 ppm1d_genes <- c("PPM1D")
 brca_genes <- c("BRCA1","BRCA2")
 hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3")
 failedSamples <-c('OvCA_44_C1D1_cf','OvCA_45_C1D1_cf','OvCA_46_C1D1_cf','OvCA_48_C1D1_cf','OvCA_50_C1D1_cf','OvCA_54_C1D1_cf','OvCA_93_C1D1_cf',
                   'OvCA_11_C1D1_cf','OvCA_40_C1D1_cf','OvCA_53_C1D1_cf','OvCA_65_C1D1_cf')
+ch_genes_without_HRD <- c("DNMT3A","TET2","ASXL1","CBL","CEBPA","GNB1","GNAS","IDH1","IDH2","JAK2","SF3B1","SRSF2","U2AF1;U2AF1L5")
 Categories<-c('CH','HRD','other','TP53')
 
 #dataframe with mutation calls from cfDNA             
@@ -54,6 +56,16 @@ df %>%
   filter(!is.element(Sample.ID, failedSamples))%>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_"))-> df.cf
+df %>% 
+  filter(Material=="wb") %>% 
+  filter(Visite == "C1D1")%>%
+  filter(is.na(replicate))%>%
+  filter(!is.element(Sample.ID, failedSamples))%>%
+  dplyr::select(all_of(variables)) %>%
+  mutate(cfID=paste(Patient.ID,position,sep="_"))-> df.wb
+
+#anti_join(df.cf, df.wb, by= "cfID")->df.cf_only
+#save(df.cf_only,file="data/interim/df.cf_only.RDATA")
 
 #data frame with mutation calls from WB samples that have matched cfDNA samples
 df %>% 
@@ -61,7 +73,6 @@ df %>%
   filter(is.na(replicate))%>%
   filter(Material=="wb") %>% 
   filter(Visite == "C1D1")%>%
-  filter(!is.element(Sample.ID, failedSamples))%>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_")) -> df.cf_wb
 
@@ -164,17 +175,17 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
                                             ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
   #filter(gene != "other") %>%
   mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
-  filter(p.binom.x <= -Inf) %>%
+  filter(p.binom.x <= -10) %>%
   filter(Func.x == "exonic"|Func.x == "splicing"|Func.x == "exonic;splicing") %>%
   filter(ExonicFunc.x != "synonymous SNV")%>%
   filter(AF.x<0.1)%>%
   filter(snp.x==FALSE)%>%
   filter(TVAF.x>0.01|TVAF.y>0.01)%>%
   filter(TR2.y > 19|TR2.x>19)%>%
-  ggplot(., aes(x=TVAF.x,y=TVAF.y,
+  ggplot(aes(x=TVAF.x,y=TVAF.y,
              color=gene,
              #shape=ExonicFunc.x
-             )) +
+  )) +
   geom_point(size=2)+
   geom_abline(slope=1,size=1,linetype=2,alpha=0.5)+
   geom_abline(slope=1/3,size=1,linetype=3,alpha=0.5,intercept=-2)+
@@ -187,8 +198,40 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   theme_minimal()->p.cf.corr
 p.cf.corr
 
-png("output/figures/p.cf.corr.filter1.png",width=10, height=10,units="in",res=500,type="cairo")
+png("output/figures/p.cf.corr.filter1.png",width=10, height=6,units="in",res=500,type="cairo")
 p.cf.corr
+dev.off()
+
+##### Correlation plot Filter 1 - TP53 mutations only 
+full_join(df.cf,df.cf_wb,by="cfID") %>% 
+  filter(!is.element(Sample.x,failedSamples))%>%
+  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
+  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
+  mutate(gene = ifelse(is.element(Gene.x,ch_genes_without_HRD),"CH",
+                       ifelse(is.element(Gene.x,tp53_genes),"TP53",
+                              ifelse(is.element(Gene.x,hrd_genes),"HRD",
+                                     ifelse(is.element(Gene.x,brca_genes),"BRCA",
+                                            ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
+  mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
+  filter(p.binom.x == -Inf|p.binom.y == -Inf) %>%
+  filter(Func.x == "exonic"|Func.x == "splicing"|Func.x == "exonic;splicing") %>%
+  filter(ExonicFunc.x != "synonymous SNV")%>%
+  filter(AF.x<0.1)%>%
+  #filter(snp.x==FALSE)%>%
+  filter(TR2.x>19|TR2.y>19) %>% 
+  filter(TVAF.x>0.001|TVAF.y>0.001)%>%
+  filter(Gene.x=="TP53")%>%
+  #filter(cosmic_ovary)%>%
+  ggplot(aes(x=TVAF.x,y=TVAF.y,color=cosmic_ovary))+
+  geom_point(size=4)+
+  geom_abline(slope=1)+
+  scale_color_viridis(discrete=TRUE)+
+  scale_x_log10(limits=c(0.0005,0.5)) +
+  scale_y_log10(limits=c(0.0005,0.5)) +
+  theme_minimal() -> p.TP53_cosmic_cf_wb
+
+png("output/figures/p.TP53_cosmic_cf_wb.png",width=10, height=6,units="in",res=500,type="cairo")
+p.TP53_cosmic_cf_wb
 dev.off()
 
 
@@ -228,11 +271,9 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   coord_flip() -> p.mutprev
 p.mutprev
 
-###------------------------------------ab hier wird es für mich unübersichtlich
+###----------df.filtered.cf soll im Endeffekt bei cf_variant filtering rauskommen, ich überarbeite das gerade noch, ich lösche das hier wieder, wenn es dann funktioniert
 ### below line composition analysis
-load("data/interim/seqdata_filtered_cf.RData")
-
-df.filtered.cf%>%
+df.filtered_cf%>%
   filter(tag == "true" | tag == "tumour")%>%
   mutate(gene = ifelse(is.element(Gene, ch_genes_without_HRD), "CH",
                        ifelse(is.element(Gene, tp53_genes), "TP53",
@@ -314,37 +355,6 @@ for (x in Categories)
   dev.off()
 }
 
-#####  Correlation plot Filter 1 - TP53 mutations only --------------------------------------------------
-full_join(df.cf,df.cf_wb,by="cfID") %>% 
-  filter(!is.element(Sample.x,failedSamples))%>%
-  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
-  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
-  mutate(gene = ifelse(is.element(Gene.x,ch_genes_without_HRD),"CH",
-                       ifelse(is.element(Gene.x,tp53_genes),"TP53",
-                              ifelse(is.element(Gene.x,hrd_genes),"HRD",
-                                     ifelse(is.element(Gene.x,brca_genes),"BRCA",
-                                            ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
-  mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
-  filter(p.binom.x == -Inf|p.binom.y == -Inf) %>%
-  filter(Func.x == "exonic"|Func.x == "splicing"|Func.x == "exonic;splicing") %>%
-  filter(ExonicFunc.x != "synonymous SNV")%>%
-  filter(AF.x<0.1)%>%
-  #filter(snp.x==FALSE)%>%
-  filter(TR2.x>19|TR2.y>19) %>% 
-  filter(TVAF.x>0.001|TVAF.y>0.001)%>%
-  filter(Gene.x=="TP53")%>%
-  #filter(cosmic_ovary)%>%
-  ggplot(aes(x=TVAF.x,y=TVAF.y,color=cosmic_ovary))+
-  geom_point(size=4)+
-  geom_abline(slope=1)+
-  scale_color_viridis(discrete=TRUE)+
-  scale_x_log10(limits=c(0.0005,0.5)) +
-  scale_y_log10(limits=c(0.0005,0.5)) +
-  theme_minimal() -> p.TP53_cosmic_cf_wb
-
-png("output/figures/p.TP53_cosmic_cf_wb.png",width=10, height=6,units="in",res=500,type="cairo")
-p.TP53_cosmic_cf_wb
-dev.off()
 
 #####  detecting BRCA mutations in cfDNA (this will later on also be important when looking for BRCA reversion mutations)####
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
@@ -838,8 +848,153 @@ png("output/figures/p.cf.serialC7.png",width=6, height=4,units="in",res=500,type
 p.cf.serial
 dev.off()
 
+#####  Lolliplot for TP53 muts------------------------------------------------------------------------
+full_join(df.cf,df.cf_wb,by="cfID") %>% 
+  filter(!is.element(Sample.x,mismatch))%>%
+  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
+  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
+  mutate(gene = ifelse(is.element(Gene.x,ch_genes),"CH",
+                       ifelse(is.element(Gene.x,tp53_genes),"TP53",
+                              ifelse(is.element(Gene.x,hrd_genes),"HRD",
+                                     ifelse(is.element(Gene.x,brca_genes),"BRCA","other")))))%>%
+  filter(gene != "other") %>%
+  mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
+  filter(mutFreq.x < 10) %>%
+  filter(Func.x == "exonic"|Func.x == "splicing"|Func.x == "exonic;splicing") %>%
+  filter(ExonicFunc.x != "synonymous SNV")%>%
+  filter(AF.x<0.1)%>%
+  #filter(snp.x==FALSE)%>%
+  filter(TR2.x>9|TR2.y>9) %>% 
+  filter(TVAF.x>0.005|TVAF.y>0.005)%>%
+  filter(gene=="TP53") %>% 
+  mutate(origin = ifelse(TVAF.y>0,"WB","ctDNA"))%>%
+  filter(Func.x == "exonic")%>%
+  separate(.,AAChange.x,
+           into=c("transcript1","rest"),
+           sep=",",
+           remove=TRUE,
+           convert=FALSE)%>%
+  separate(.,transcript1,
+           into=c("gene","transcript_name","exon","DNAchange","amino_acid_change"),
+           sep = ":",
+           remove = TRUE,
+           convert = FALSE)%>%
+  #mutate(ExonicFunc = ifelse(ExonicFunc=="nonsynonymous SNV","Missense","Truncating"))%>%
+  mutate(AA_pos.x = as.character(amino_acid_change))%>%
+  separate(.,AA_pos.x,
+           into=c("p","AA_pos1"),
+           sep = "p.",
+           remove = TRUE,
+           convert = FALSE)%>%
+  separate(.,AA_pos1,
+           into=c("AA_pos2","rest"),
+           sep = "fs",
+           remove = TRUE,
+           convert = FALSE)%>%
+  mutate(AA_position = extract_numeric(AA_pos2))%>%
+  dplyr::select(gene,amino_acid_change,AA_position,Sample.x,ExonicFunc.x,Chr.x,Start.x,End.x,Ref.x,Alt.x,origin)->df.lolli
 
-#Confoundation by CH in HRD diagnostic ->ATM and CHEK2
+names(df.lolli) <- c(
+  "Hugo_Symbol",
+  "Protein_Change",
+  "AA_Position",
+  "Sample_ID",
+  "Mutation_Type",
+  "Chromosome",
+  "Start_Position",
+  "End_Position",
+  "Reference_Allele",
+  "Variant_Allele",
+  "Center"
+)
+#write.table(df.lolli, file='test.tsv', quote=FALSE, sep='\t', col.names = TRUE,row.names=FALSE)
+
+##plot with g3viz. Color coding by type of origin (WB/cfDNA), usually by Mutation_Type(SNV/stopgain/frameshift)
+plot.options <- g3Lollipop.theme(theme.name = "cbioportal",
+                                 title.text = "TP53",
+                                 y.axis.label = "# of Mutations")
+
+g3Lollipop(df.lolli%>%filter(Hugo_Symbol=="TP53"),
+           gene.symbol = "TP53",
+           btn.style = "gray", # gray-style chart download buttons
+           plot.options = plot.options,
+           factor.col = "Center",
+           save.png.btn	= FALSE,
+           save.svg.btn = FALSE,
+           output.filename = "cbioportal_theme")
+
+#####  Lolliplot for BRCA1/2 muts-----------------------------------------------------------------------
+df.brca_germline%>%
+  separate(.,AAChange,
+           into=c("transcript1","rest"),
+           sep=",",
+           remove=TRUE,
+           convert=FALSE)%>%
+  separate(.,transcript1,
+           into=c("gene","transcript_name","exon","DNAchange","amino_acid_change"),
+           sep = ":",
+           remove = TRUE,
+           convert = FALSE)%>%
+  #mutate(ExonicFunc = ifelse(ExonicFunc=="nonsynonymous SNV","Missense","Truncating"))%>%
+  mutate(AA_pos = as.character(amino_acid_change))%>%
+  separate(.,AA_pos,
+           into=c("p","AA_pos1"),
+           sep = "p.",
+           remove = TRUE,
+           convert = FALSE)%>%
+  separate(.,AA_pos1,
+           into=c("AA_pos2","rest"),
+           sep = "fs",
+           remove = TRUE,
+           convert = FALSE)%>%
+  mutate(AA_position = extract_numeric(AA_pos2))%>%
+  dplyr::select(Gene,amino_acid_change,AA_position,Sample,ExonicFunc,Chr,Start,End,Ref,Alt)->df.lolli
+
+names(df.lolli) <- c(
+  "Hugo_Symbol",
+  "Protein_Change",
+  "AA_Position",
+  "Sample_ID",
+  "Mutation_Type",
+  "Chromosome",
+  "Start_Position",
+  "End_Position",
+  "Reference_Allele",
+  "Variant_Allele"
+)
+
+##plot with g3viz
+plot.options <- g3Lollipop.theme(theme.name = "cbioportal",
+                                 title.text = "BRCA1",
+                                 y.axis.label = "# of Mutations")
+
+g3Lollipop(df.lolli%>%filter(Hugo_Symbol=="BRCA1"),
+           gene.symbol = "BRCA1",
+           btn.style = "gray", # gray-style chart download buttons
+           plot.options = plot.options,
+           factor.col = "Mutation_Type",
+           save.png.btn	= FALSE,
+           save.svg.btn = FALSE,
+           output.filename = "cbioportal_theme")
+
+##plot with g3viz
+plot.options <- g3Lollipop.theme(theme.name = "cbioportal",
+                                 title.text = "BRCA2",
+                                 y.axis.label = "# of Mutations")
+
+g3Lollipop(df.lolli%>%filter(Hugo_Symbol=="BRCA2"),
+           gene.symbol = "BRCA2",
+           btn.style = "gray", # gray-style chart download buttons
+           plot.options = plot.options,
+           factor.col = "Mutation_Type",
+           save.png.btn	= FALSE,
+           save.svg.btn = FALSE,
+           output.filename = "cbioportal_theme")
+
+
+
+
+#### Confoundation by CH in HRD diagnostic ->ATM and CHEK2  ####
 ATMandCHEK2%>%
   filter(Gene == "ATM"| Gene == "CHEK2")%>%
   filter(tag == "true" | tag == "tumour")%>%

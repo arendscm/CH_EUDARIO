@@ -299,3 +299,64 @@ for (current_patient in EOT_ids)
 }
 
 rm(list=ls())
+
+
+
+##### Correlation of WB-cf Mutations across different timepoints ####
+load('data/interim/seqdata.RDATA')
+load('data/interim/seqdata_filtered.RDATA')
+source("src/ids.R")
+
+ids%>%
+  filter(Visite == "EOT" & Material == "cf")%>%
+  .$Patient.ID->EOTcfpat
+
+df.filtered.c1d1%>%
+  filter(tag== "true" & TVAF >= 0.01)%>%
+  filter(is.element(Patient.ID, EOTcfpat))-> mut
+
+select(mut, Patmut)->track
+
+left_join(track, df, by="Patmut")->track
+
+track%>% 
+  mutate(Patmut.material = paste(Patmut,Material, sep = "_"))->track
+##sieht noch nicht so gut aus
+track%>%
+  ggplot(aes(y=TVAF, x=Visite, colour= Gene, group=Patmut.material))+
+  geom_point(size=5,alpha=0.3)+
+  geom_line(aes(x=Visite,y=TVAF,group=Patmut.material,color= Gene,linetype=Material),size=1*1,na.rm=FALSE) + 
+  theme_minimal()+
+  scale_y_continuous(limits=c(0,0.2))+
+  labs(title="Clone Dynamics")+
+  facet_wrap(~Patient.ID)->test
+
+
+track%>%
+  filter(Visite == "EOT")->EOTcorr
+EOTcorr%>%
+  filter(Material == "cf")->EOTcorrcf
+EOTcorr%>%
+  filter(Material == "wb")->EOTcorrwb
+full_join(EOTcorrwb,EOTcorrcf,by="Patmut")->test
+  #filter(TVAF.x <= 0.4)%>%
+ggscatter(., 
+          y = "TVAF.x", 
+          x = "TVAF.y", 
+          add = "reg.line", 
+          #conf.int = TRUE, 
+          cor.coef = TRUE, 
+          cor.method = "pearson",
+          size=1,
+          xlab = "VAF cfDNA", 
+          ylab = "VAF wholeblood", 
+          title="EOT VAF Correlation")->p.EOTcorr
+
+png("output/figures/EOTcorr.png",width=6, height=4,units="in",res=500,type="cairo")
+p.EOTcorr
+dev.off()
+
+
+
+
+
