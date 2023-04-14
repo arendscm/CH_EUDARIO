@@ -26,6 +26,7 @@ library(ggpubr)
 #df <- read.csv('data/interim/mutationcalls.csv')
 load('data/interim/seqdata.RData')
 load('data/interim/seqdata_filtered.RData')
+load('data/interim/seqdata_filtered_cf.RData')
 
 ######## Get Patient ids
 source("src/ids.R")
@@ -44,13 +45,22 @@ brca_genes <- c("BRCA1","BRCA2")
 hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3")
 failedSamples <-c('OvCA_44_C1D1_cf','OvCA_45_C1D1_cf','OvCA_46_C1D1_cf','OvCA_48_C1D1_cf','OvCA_50_C1D1_cf','OvCA_54_C1D1_cf','OvCA_93_C1D1_cf',
                   'OvCA_11_C1D1_cf','OvCA_40_C1D1_cf','OvCA_53_C1D1_cf','OvCA_65_C1D1_cf')
+ch_genes_without_HRD <- c("DNMT3A","TET2","ASXL1","CBL","CEBPA","GNB1","GNAS","IDH1","IDH2","JAK2","SF3B1","SRSF2","U2AF1;U2AF1L5")
 Categories<-c('CH','HRD','other','TP53')
 
 #dataframe with mutation calls from cfDNA             
 df %>% 
+  filter(Material=="cf") %>% 
+  filter(Visite == "C1D1")%>%
+  filter(is.na(replicate))%>%
+  filter(!is.element(Sample.ID, failedSamples))%>%
+  dplyr::select(all_of(variables)) %>%
+  mutate(cfID=paste(Patient.ID,position,sep="_"))-> df.cf
+df %>% 
   filter(Material=="wb") %>% 
   filter(Visite == "C1D1")%>%
   filter(is.na(replicate))%>%
+  filter(!is.element(Sample.ID, failedSamples))%>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_"))-> df.wb
 
@@ -261,11 +271,9 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   coord_flip() -> p.mutprev
 p.mutprev
 
-###------------------------------------ab hier wird es für mich unübersichtlich
 ###----------df.filtered.cf soll im Endeffekt bei cf_variant filtering rauskommen, ich überarbeite das gerade noch, ich lösche das hier wieder, wenn es dann funktioniert
 ### below line composition analysis
-load("data/interim/seqdata_filtered_cf.RData")
-df.filtered.cf%>%
+df.filtered_cf%>%
   filter(tag == "true" | tag == "tumour")%>%
   mutate(gene = ifelse(is.element(Gene, ch_genes_without_HRD), "CH",
                        ifelse(is.element(Gene, tp53_genes), "TP53",
