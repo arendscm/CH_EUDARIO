@@ -73,6 +73,7 @@ df %>%
   filter(is.na(replicate))%>%
   filter(Material=="wb") %>% 
   filter(Visite == "C1D1")%>%
+  filter(!is.element(Sample.ID, failedSamples))%>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_")) -> df.cf_wb
 
