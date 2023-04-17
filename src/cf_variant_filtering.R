@@ -119,13 +119,13 @@ rm(mutID.count)+
 rm(mutID.freq)+
 rm(mutID.func)+
 rm(mutID.cosmic)+
-rm(mutID.tp53)+
+rm(mutID.qual)+
 rm(mm_hotspots)+
 rm(ch_genes)+
 rm(hrd_genes)+
 rm(PARPi_actionable_genes)+
 rm(ovarian_cancer_genes)+
-rm(df.backup)+
+rm(failedSamples)+
 rm(ids)+
 rm(df)
 rm(df.backup)
@@ -134,5 +134,5 @@ save.image("data/interim/seqdata_filtered_cf.RData")
 
 
 filename <- paste("output/filtered_results_c1d1_cf",Sys.Date(),".xlsx",sep="")
-write.xlsx(df.filtered_cf_PARpi,filename,sheetName = "filtered_results",append=TRUE)
+#write.xlsx(df.filtered_cf_PARpi,filename,sheetName = "filtered_results",append=TRUE)
 
