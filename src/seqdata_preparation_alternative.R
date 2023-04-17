@@ -13,7 +13,6 @@
 ########   Dependencies   #####
 library(base)
 library(dplyr)
-library(xlsx)
 library(reshape)
 library(tidyr)
 library(readxl)

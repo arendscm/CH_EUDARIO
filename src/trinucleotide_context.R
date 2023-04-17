@@ -129,7 +129,6 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
                   "ALT",
                   "compartment"))-> df.sig
 
-  
 ##create GRanges object 
 gr.sig <- makeGRangesFromDataFrame(df.sig,
                          keep.extra.columns=TRUE,
@@ -178,9 +177,7 @@ png("output/figures/mut_sbs.png",width=10, height=4,units="in",res=500,type="cai
 p
 dev.off()
 
-
 ##dbs contexts (funktioniert nicht)
-
 split(gr.dbs,as.factor(gr.dbs$compartment)) -> grl.comp.dbs
 dbs_context <- get_dbs_context(grl.comp.dbs)
 dbs_counts <- count_dbs_contexts(dbs_context)
@@ -194,7 +191,7 @@ dev.off()
 sbs_url <- "https://cog.sanger.ac.uk/cosmic-signatures-production/documents/COSMIC_v3.3.1_SBS_GRCh38.txt"
 dbs_url <- "https://cog.sanger.ac.uk/cosmic-signatures-production/documents/COSMIC_v3.3_DBS_GRCh38.txt"
 indel_url <- "https://cog.sanger.ac.uk/cosmic-signatures-production/documents/COSMIC_v3.3_ID_GRCh37.txt"
-cosmic_url <- "https://cog.sanger.ac.uk/cosmic-signatures-production/documents/COSMIC_v2_SBS_GRCh38.txt"
+cosmic_url <- "https://cog.sanger.ac.uk/cosmic-signatures-production/documents/COSMIC_v2_SBS_GRCh38.txt" #older version of COSMIC signatures with less signatures
 
 
 ##preprocess signature matrices
@@ -212,7 +209,7 @@ dbs_sig <- as.matrix(dbs[,2:12])
 indel_sig <- as.matrix(indel[,2:19])
 cosmic_sig <- as.matrix(cosmic[,2:31])
 
-merged_signatures <- merge_signatures(sbs_sig, cos_sim_cutoff = 0.8)
+merged_signatures <- merge_signatures(sbs_sig, cos_sim_cutoff = 0.8) #merge similar signatures
 ##calculate similarity to signature matrix for SBS
 cos_sim_samples_signatures = cos_sim_matrix(mut_mat.sbs, sbs_sig)
 plot_cosine_heatmap(cos_sim_samples_signatures,
@@ -226,7 +223,6 @@ fit_sbs <- fit_to_signatures_strict(mut_mat.sbs, merged_signatures,max_delta=0.0
 fit_sbs <- fit_to_signatures_strict(mut_mat.sbs, sbs_sig,max_delta=0.002, method = "best_subset")
 
 fit_dbs <- fit_to_signatures_strict(dbs_counts, dbs_sig)
-
 
 # Select signatures with some contribution
 select_sbs <- which(rowSums(fit_sbs$fit_res$contribution) > 5)
@@ -245,7 +241,6 @@ plot_contribution(fit_dbs$contribution[select_dbs,],
                   dbs_sig[,select_dbs],
                   coord_flip = FALSE,
                   mode = "relative") -> p.dbs
-
 
 png("output/figures/sig_dbs.png",width=4, height=4,units="in",res=500,type="cairo")
 p.dbs

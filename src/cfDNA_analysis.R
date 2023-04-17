@@ -73,6 +73,7 @@ df %>%
   filter(is.na(replicate))%>%
   filter(Material=="wb") %>% 
   filter(Visite == "C1D1")%>%
+  filter(!is.element(Sample.ID, failedSamples))%>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_")) -> df.cf_wb
 
@@ -308,7 +309,6 @@ ggplot(gene_percents_df, aes(x = Var1, y = Freq, fill = Var1)) +
 png("output/figures/p.cfonly.category.png",width=10, height=10,units="in",res=500,type="cairo")
 p.cfonly.category
 dev.off()
-
 
 ##PLOTs
 nop <- ids%>%
