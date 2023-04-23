@@ -113,6 +113,7 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   filter(TVAF.x>0.01|TVAF.y>0.01)%>%
   filter(TR2.y > 19|TR2.x>19)%>%
   filter(TVAF.x<0.35&TVAF.y<0.35)%>% #no germline variants
+  filter(tag.x != "false"|tag.x != "germline")%>% #no germline variants
   full_join(.,df.cf_wb_true) %>%   ## rescue mutations tagged true
   mutate(compartment = ifelse(TVAF.x > TVAF.y*5,"cf","wb"))%>% ##classify according to compartment (cf or wb)
   mutate(chr = Chr.x,
@@ -182,6 +183,7 @@ split(gr.dbs,as.factor(gr.dbs$compartment)) -> grl.comp.dbs
 dbs_context <- get_dbs_context(grl.comp.dbs)
 dbs_counts <- count_dbs_contexts(dbs_context)
 plot_dbs_contexts(dbs_counts, same_y = TRUE) -> p.dbs
+p.dbs
 
 png("output/figures/mut_dbs.png",width=10, height=4,units="in",res=500,type="cairo")
 p.dbs
@@ -233,6 +235,8 @@ plot_contribution(fit_sbs$fit_res$contribution[select_sbs,],
                   sbs_sig[,select_sbs],
                   coord_flip = FALSE,
                   mode = "relative") -> p.sbs
+p.sbs
+
 png("output/figures/sig_sbs.png",width=4, height=4,units="in",res=500,type="cairo")
 p.sbs
 dev.off()

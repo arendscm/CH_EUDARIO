@@ -184,7 +184,7 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   filter(TVAF.x>0.01|TVAF.y>0.01)%>%
   filter(TR2.y > 19|TR2.x>19)%>%
   ggplot(aes(x=TVAF.x,y=TVAF.y,
-             color=gene,
+             color=tag.x,
              #shape=ExonicFunc.x
   )) +
   geom_point(size=2)+
@@ -224,19 +224,20 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   filter(Gene.x=="TP53")%>%
   #filter(cosmic_ovary)%>%
   ggplot(aes(x=TVAF.x,y=TVAF.y,color=cosmic_ovary))+
-  geom_point(size=4)+
+  geom_point(size=2)+
   geom_abline(slope=1)+
   scale_color_viridis(discrete=TRUE)+
   scale_x_log10(limits=c(0.0005,0.5)) +
   scale_y_log10(limits=c(0.0005,0.5)) +
   theme_minimal() -> p.TP53_cosmic_cf_wb
+p.TP53_cosmic_cf_wb
 
 png("output/figures/p.TP53_cosmic_cf_wb.png",width=10, height=6,units="in",res=500,type="cairo")
 p.TP53_cosmic_cf_wb
 dev.off()
 
 
-#####  Max: Mutationspectrum for mutations in WB and cf only mutations------------------
+#####  Max: Mutationspectrum for mutations in WB and cf only mutations by group------------------
 full_join(df.cf,df.cf_wb,by="cfID") %>% 
   filter(!is.element(Sample.x,failedSamples))%>%
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
@@ -256,12 +257,50 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   filter(TVAF.x>0.01|TVAF.y>0.01)%>%
   filter(TR2.y > 19|TR2.x>19)%>%
   filter(TVAF.x<0.35&TVAF.y<0.35)%>% #no germline variants
+  filter(tag.x != "false"|tag.x != "germline")%>%
   mutate(compartment = ifelse(TVAF.x > TVAF.y*5,"cf","wb"))%>%
   dplyr::select(gene, compartment) %>% 
   table %>% 
   data.frame %>%
   ggplot(aes(x=reorder(gene, Freq), y=Freq, fill=compartment)) +
-  geom_bar(stat="identity", width=0.6, position = position_dodge())+
+  geom_bar(stat="identity", width=0.6, position = "stack")+
+  #geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
+  xlab("")+
+  scale_y_continuous(position = "right")+
+  ylab("Gene Mutation Frequency") +
+  my_theme() +
+  theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35),
+        axis.ticks.y = element_blank())+
+  coord_flip() -> p.mutprev
+p.mutprev
+
+### Mutationspectrum cf vs wb by gene 
+full_join(df.cf,df.cf_wb,by="cfID") %>% 
+  filter(!is.element(Sample.x,failedSamples))%>%
+  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
+  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
+  mutate(gene = ifelse(is.element(Gene.x,ch_genes_without_HRD),"CH",
+                       ifelse(is.element(Gene.x,tp53_genes),"TP53",
+                              ifelse(is.element(Gene.x,hrd_genes),"HRD",
+                                     ifelse(is.element(Gene.x,brca_genes),"BRCA",
+                                            ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
+  #filter(gene != "other") %>%
+  mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
+  filter(p.binom.x <= -Inf) %>%
+  filter(Func.x == "exonic"|Func.x == "splicing"|Func.x == "exonic;splicing") %>%
+  filter(ExonicFunc.x != "synonymous SNV")%>%
+  filter(AF.x<0.1)%>%
+  filter(snp.x==FALSE)%>%
+  filter(TVAF.x>0.01|TVAF.y>0.01)%>%
+  filter(TR2.y > 19|TR2.x>19)%>%
+  filter(TVAF.x<0.35&TVAF.y<0.35)%>% #no germline variants
+  filter(tag.x != "false"|tag.x != "germline")%>%
+  mutate(compartment = ifelse(TVAF.x > TVAF.y*5,"cf","wb"))%>%
+  dplyr::select(Gene.x, compartment) %>% 
+  table %>% 
+  data.frame %>%
+  ggplot(aes(x=reorder(Gene.x, Freq), y=Freq, fill=compartment)) +
+  geom_bar(stat="identity", width=0.6, position = "stack")+
   #geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
   xlab("")+
   scale_y_continuous(position = "right")+
