@@ -995,7 +995,7 @@ g3Lollipop(df.lolli%>%filter(Hugo_Symbol=="BRCA2"),
 
 
 
-#### Confoundation by CH in HRD diagnostic ->ATM and CHEK2  ####
+#####  Confoundation by CH in HRD diagnostic ->ATM and CHEK2  ####
 ATMandCHEK2%>%
   filter(Gene == "ATM"| Gene == "CHEK2")%>%
   filter(tag == "true" | tag == "tumour")%>%
@@ -1078,3 +1078,82 @@ sample_counts%>%
   filter(count >= 30)%>%
   mutate(Sample_orig = Sample)%>%
   left_join(.,ids,by = "Sample_orig")->test2 #candidates for repetition
+#####  Barplot cf components WBC-Tumour derived #####
+load ('data/interim/workingdata.RDATA')
+
+#canonical CH Gene from this paper: Clonal hematopoiesis detection in patients with cancer using cell-free DNA sequencing
+canonicalCHgene<-c("TET2", "DNMT3A", "ASXL1", "JAK2", "PPM1D", "SF3B1")
+hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3")
+myeloidDKMS <-c("SRSF2","TP53", "U2AF1", "CBL", "IDH1", "IDH2", "BCOR", "BCORL1", "EZH2", "STAG2",
+                "GNAS","GNB1","KRAS", "NRAS", "WT1", "MYD88", "STAT3", "CALR", "CEBPA", 
+                "CSF3R", "ETV6", "FLT3","GATA2","GATA1","KIT","MPL","NPM1","PTPN11","RUNX1","SETBP1","NF1","PHF6")
+
+workingdata%>%
+  filter(visit_material == "C1D1_cf")%>%
+  filter(tag == "true"| tag=="cf-only")%>%
+  mutate(category = ifelse(is.element(Gene, canonicalCHgene), "canonical CH genes",
+                           ifelse(is.element(Gene, myeloidDKMS), "other myeloid driver genes",
+                                  ifelse(is.element(Gene, hrd_genes), "HRD genes", "other")))) ->cf.data
+cf.data%>%
+  nrow()->totalmutations
+
+## Tumor or WB derived plot
+cf.data %>%
+  filter(tag == "true")%>%
+  group_by(category) %>%
+  summarize(count = n())%>%
+  mutate(Percentage = count / totalmutations)%>%
+  mutate(tag = paste("WBC derived"))-> plotdata1
+  
+cf.data %>%
+  filter(tag == "cf-only")%>%
+  group_by(category) %>%
+  summarize(count = n())%>%
+  mutate(Percentage = count / totalmutations)%>%
+  mutate(tag = paste("Tumour derived"))-> plotdata2
+
+bind_rows(plotdata1, plotdata2)%>%
+  ggplot(aes(x = tag, y = Percentage, fill = category)) +
+  geom_bar(position = "stack", stat = "identity") +
+  labs(x = " ", y = "Percentage of total mutations", fill = "Gene category") +
+  scale_fill_manual(values=c("#deebf7", "#7A96B8", "#56779F", "#394F6A")) +
+  theme_minimal() +
+  scale_y_continuous(limits = c(0, 1), expand = c(0, 0))->p.percentageTumorWBC
+
+png("output/figures/p.percentageTumorWBC.png",width=8, height=6,units="in",res=500,type="cairo")
+p.percentageTumorWBC
+dev.off()
+
+## Tumor or WB derived with genes plot
+#Prepare dataset
+mutation_counts <- cf.data %>%
+  group_by(Gene, tag) %>%
+  tally()
+mutation_counts_wide <- mutation_counts %>%
+  spread(tag, n, fill = 0)
+
+mutation_counts_wide <- mutation_counts_wide %>%
+  mutate(Total = true + `cf-only`)
+
+mutation_counts_summary <- mutation_counts_wide %>%
+  pivot_longer(cols = c("true", "cf-only"), names_to = "origin", values_to = "Count") %>%
+  mutate(Tag = ifelse(origin == "true", "true", "cf-only")) %>%
+  group_by(Gene, origin) %>%
+  summarize(Total = sum(Count)) %>%
+  arrange(desc(Total))
+
+# Create  barplot
+ggplot(mutation_counts_summary, aes(x = reorder(Gene, -Total), y = Total, fill = origin)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("#7A96B8", "#394F6A"), labels = c("WB derived", "Tumour derived")) +
+  xlab("Gene") +
+  ylab("Number of Mutations") +
+  ggtitle("Mutation Counts by Gene according to origin") +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6))+
+  scale_y_continuous(breaks = seq(0,65, 5))->p.GenecountTumorWBC
+
+png("output/figures/p.GenecountTumorWBC.png",width=8, height=6,units="in",res=500,type="cairo")
+p.GenecountTumorWBC
+dev.off()
+
