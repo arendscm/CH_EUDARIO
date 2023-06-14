@@ -284,7 +284,6 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
                               ifelse(is.element(Gene.x,hrd_genes),"HRD",
                                      ifelse(is.element(Gene.x,brca_genes),"BRCA",
                                             ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
-  #filter(gene != "other") %>%
   mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
   filter(p.binom.x <= -Inf) %>%
   filter(Func.x == "exonic"|Func.x == "splicing"|Func.x == "exonic;splicing") %>%
@@ -311,6 +310,71 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   coord_flip() -> p.mutprev
 p.mutprev
 
+
+##Lolliplots for TP53 mutations
+
+full_join(df.cf,df.cf_wb,by="cfID") %>% 
+  filter(!is.element(Sample.x,failedSamples))%>%
+  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
+  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
+  mutate(gene = ifelse(is.element(Gene.x,ch_genes_without_HRD),"CH",
+                       ifelse(is.element(Gene.x,tp53_genes),"TP53",
+                              ifelse(is.element(Gene.x,hrd_genes),"HRD",
+                                     ifelse(is.element(Gene.x,brca_genes),"BRCA",
+                                            ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
+  mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
+  filter(p.binom.x == -Inf|p.binom.y == -Inf) %>%
+  filter(Func.x == "exonic"|Func.x == "splicing"|Func.x == "exonic;splicing") %>%
+  filter(ExonicFunc.x != "synonymous SNV")%>%
+  filter(AF.x<0.1)%>%
+  #filter(snp.x==FALSE)%>%
+  filter(TR2.x>19|TR2.y>19) %>% 
+  filter(TVAF.x>0.001|TVAF.y>0.001)%>%
+  filter(Gene.x=="TP53")%>%
+  mutate(Gene=Gene.x,
+         AAChange = AAChange.x,
+         Sample = Patient.ID.x,
+         ExonicFunc=ExonicFunc.x,
+         Chr=Chr.x,
+         Start=Start.x,
+         End=End.x,
+         Ref=Ref.x,
+         Alt=Alt.x,
+         TVAF=TVAF.x,
+         tag = tag.x,
+         Func=Func.x,
+         COSMIC=cosmic92_coding.x)%>%
+  dplyr::select(Gene,AAChange,Sample,Func,ExonicFunc,Chr,Start,End,Ref,Alt,TVAF,tag,COSMIC)-> df.tp53
+
+df.tp53_wb <- df.tp53 %>% filter(tag=="true")%>%makeMAF
+df.tp53_cf <- df.tp53 %>% filter(tag=="cf-only")%>%makeMAF
+  
+plot.options <- g3Lollipop.theme(theme.name = "cbioportal",
+                                 title.text = "TP53 CH",
+                                 y.axis.label = "# of Mutations")
+
+g3Lollipop(df.tp53_wb,
+           gene.symbol = "TP53",
+           btn.style = "gray", # gray-style chart download buttons
+           plot.options = plot.options,
+           factor.col = "Variant_Type",
+           save.png.btn	= FALSE,
+           save.svg.btn = FALSE,
+           output.filename = "cbioportal_theme")
+
+
+plot.options <- g3Lollipop.theme(theme.name = "cbioportal",
+                                 title.text = "TP53 cfDNA",
+                                 y.axis.label = "# of Mutations")
+
+g3Lollipop(df.tp53_cf,
+           gene.symbol = "TP53",
+           btn.style = "gray", # gray-style chart download buttons
+           plot.options = plot.options,
+           factor.col = "Variant_Type",
+           save.png.btn	= FALSE,
+           save.svg.btn = FALSE,
+           output.filename = "cbioportal_theme")
 ###----------df.filtered.cf soll im Endeffekt bei cf_variant filtering rauskommen, ich überarbeite das gerade noch, ich lösche das hier wieder, wenn es dann funktioniert
 ### below line composition analysis
 df.filtered_cf%>%

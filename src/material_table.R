@@ -29,12 +29,14 @@ ids %>%
                 visit_mat_C1D1_cf,
                 visit_mat_C1D1_wb,
                 visit_mat_C7D1_cf,
+                visit_mat_UE_cf,
                 visit_mat_EOT_cf,
                 visit_mat_EOT_wb)%>% 
   group_by(Patient.ID) %>% 
   mutate(c1d1_cf = sum(visit_mat_C1D1_cf),
          c1d1_wb = sum(visit_mat_C1D1_wb),
          c7d1_cf = sum(visit_mat_C7D1_cf),
+         ue_cf = sum(visit_mat_UE_cf),
          eot_cf= sum(visit_mat_EOT_cf),
          eot_wb = sum(visit_mat_EOT_wb))%>%
   data.frame %>%
@@ -42,8 +44,9 @@ ids %>%
                 c1d1_cf,
                 c1d1_wb,
                 c7d1_cf,
+                ue_cf,
                 eot_cf,
                 eot_wb)%>%
   unique %>%
   mutate(sum_wb = c1d1_wb+eot_wb,
-         sum_cf = c1d1_cf + c7d1_cf + eot_cf)-> df.material
+         sum_cf = c1d1_cf + c7d1_cf + ue_cf + eot_cf)-> df.material

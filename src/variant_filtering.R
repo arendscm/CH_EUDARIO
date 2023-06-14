@@ -101,7 +101,11 @@ inner_join(mutID.func,mutID.count) %>%
   mutate(current_filter = 1) %>% ##tag all variants passing current filter, then join with list of previously tagged true
   full_join(.,inner_join(df,mutID.tag.true))%>%
   filter(ExonicFunc != "synonymous SNV")%>%
-  unique()-> df.filtered  
+  unique() %>%
+  filter(!is.na(Patient.ID)) %>%
+  group_by(Sample) %>% 
+  mutate(n.calls = n()) %>% 
+  data.frame-> df.filtered  
 
 df.filtered %>% filter(Visite == "C1D1")%>%filter(Material=="wb")-> df.filtered.c1d1
 

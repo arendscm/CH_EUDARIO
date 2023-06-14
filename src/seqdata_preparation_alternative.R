@@ -32,6 +32,10 @@ data2 <- read.table('data/raw/Run2/variantcalls_P1519.csv',
 data3 <- read.table('data/raw/Run3/variantcalls_P1803.csv',
                     header = TRUE, sep = "\t", stringsAsFactors = FALSE)
 
+data4 <- read.table('data/raw/Run4/variantcalls_P3184.csv',
+                    header = TRUE, sep = "\t", stringsAsFactors = FALSE, skip=1)
+data4 <- data4[,-1]
+
 #load run and lane data
 lanes <- read_excel("data/external/Sample-Run-Assignment.xlsx")%>%
   mutate(lane = paste(Run,Lane,sep="_"))%>%
@@ -48,7 +52,6 @@ tags%>%   ##hat das ein Grund warum die rausgeschmissen werden? > ja die konnte 
 
 ##Patient ID table that identifies Sample IDs with Patient ID and timepoints
 source("src/material_table.R")
-
 
 ########   Data Preparation: Restructure data for filtering---------------------------------------------------------------------
 ##relevant variables
@@ -73,6 +76,7 @@ hotspots <- c("chr2_25234374_25234374",     #DNMT3A R882C
 #fuse inputdata and join with run and lane info
 data <- full_join(data1%>%dplyr::select(-discard_variables),data2%>%dplyr::select(-discard_variables))%>%
   full_join(.,data3%>%dplyr::select(-discard_variables))%>%
+  full_join(.,data4%>%dplyr::select(-discard_variables))%>%
   full_join(.,lanes)
 
 ##calculate mutation frequencies lane-wise
@@ -94,6 +98,7 @@ data %>%
 rm(data1)
 rm(data2)
 rm(data3)
+rm(data4)
 rm(data)
 
 #modify/add columns needed for filtering
