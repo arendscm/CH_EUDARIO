@@ -47,8 +47,6 @@ lanes <- read_excel("data/external/Sample-Run-Assignment.xlsx")%>%
 #tags <- read.table('data/external/tags_run1_run2.csv',
 #                   header = TRUE, sep = ";", stringsAsFactors = FALSE)
 load("data/interim/tags.RDATA")
-tags%>%   ##hat das ein Grund warum die rausgeschmissen werden? > ja die konnte er nicht zuordnen glaub ich
-  filter(!is.element(mutID,c("1-G7_chr17_7674872_7674872_T_C","3-C1_chr17_60663388_60663388_C_T","3-F7_chr17_7674220_7674220_C_T")))-> tags
 
 ##Patient ID table that identifies Sample IDs with Patient ID and timepoints
 source("src/material_table.R")

@@ -112,7 +112,6 @@ rm(mutID.freq)+
 rm(mutID.func)+
 rm(mutID.qual)+
 rm(mutID.cosmic)+
-rm(mutID.qual)+
 rm(mm_hotspots)+
 rm(ch_genes)+
 rm(hrd_genes)+
@@ -120,7 +119,8 @@ rm(PARPi_actionable_genes)+
 rm(ovarian_cancer_genes)+
 rm(failedSamples)+
 rm(ids)+
-rm(df)
+rm(df)+
+rm(df.backup)
 
 save.image("data/interim/seqdata_filtered_cf.RData")
 
