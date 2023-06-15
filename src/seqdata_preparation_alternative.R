@@ -34,7 +34,6 @@ data3 <- read.table('data/raw/Run3/variantcalls_P1803.csv',
 
 data4 <- read.table('data/raw/Run4/variantcalls_P3184.csv',
                     header = TRUE, sep = "\t", stringsAsFactors = FALSE, skip=1)
-data4 <- data4[,-1]
 
 #load run and lane data
 lanes <- read_excel("data/external/Sample-Run-Assignment.xlsx")%>%
@@ -102,7 +101,7 @@ rm(data)
 #modify/add columns needed for filtering
 df <- data.frame(tmp) %>% 
   filter(is.na(replicate))%>% #filter out replicates 
-  full_join(.,tags) %>% #join with list of tags from manual inspection in igv
+  left_join(.,tags) %>% #join with list of tags from manual inspection in igv
   mutate(tag = as.factor(tag)) %>%
   unique %>%
   group_by(Patient.ID,position) %>% 
@@ -132,8 +131,8 @@ df <- data.frame(tmp) %>%
     left_join(.,df.material,by="Patient.ID")->df
 
 #save as csv in interim data folder
-write.csv(df%>%filter(!is.na(Patient.ID)),'data/interim/mutationcalls.csv') # EUDARIO samples
-write.csv(df%>%filter(is.na(Patient.ID)),'data/interim/newsample_calls.csv') # non-EUDARIO samples
+#write.csv(df%>%filter(!is.na(Patient.ID)),'data/interim/mutationcalls.csv') # EUDARIO samples
+#write.csv(df%>%filter(is.na(Patient.ID)),'data/interim/newsample_calls.csv') # non-EUDARIO samples
 
 ##Save RData for further use
   tempdata <-ls()

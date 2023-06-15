@@ -31,6 +31,10 @@ load('data/interim/hotspots.RData')
 ######## Get Patient ids
 source("src/ids.R")
 
+######## Use only EUDARIO calls
+df %>% filter(!is.na(Patient.ID)) -> df
+
+
 ########   FILTERING CH calls------------------------------------------------------------
 # filter criteria
 #functional criteria
@@ -125,5 +129,8 @@ save.image("data/interim/seqdata_filtered.RData")
 
 filename <- paste("output/filtered_results_c1d1_",Sys.Date(),".xlsx",sep="")
 write.xlsx(df.filtered.c1d1,filename,sheetName = "filtered_results",append=TRUE)
+
+filename_all <- paste("output/filtered_results_all_",Sys.Date(),".xlsx",sep="")
+write.xlsx(df.filtered,filename_all,sheetName = "filtered_results")
 
 
