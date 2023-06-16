@@ -51,7 +51,11 @@ df.clin <- df.clin_orig %>%
          TumorBurden_baseline = as.numeric(TumorBurden_baseline),
          LVEF_C1D1 = as.numeric(LVEF_C1D1),
          No_Platinum_lines_binom = ifelse(Number_PreviousPlatinumLines>1,">1","1"),
-         Duration_PriorPARPi = ifelse(is.na(Duration_PriorPARPi),0,Duration_PriorPARPi))%>%
+         Duration_PriorPARPi = ifelse(is.na(Duration_PriorPARPi),0,Duration_PriorPARPi),
+         response_binom = ifelse(Response_best == "NAP",NA,
+                                 ifelse(Response_best =="CR"|Response_best =="PR","CR or PR","SD or PD")),
+         response_binom2 = ifelse(Response_best == "NAP",NA,
+                                 ifelse(Response_best =="CR"|Response_best =="PR"|Response_best =="SD","CR, PR or SD","PD")))%>%
   mutate(ae_haematotox = is.element(Patient.ID,(df.ae %>%
                                                   filter(is.element(AE_consensus_term,c("neutropenia","thrombocytopenia","anemia")))%>%
                                                   dplyr::select(patient_code)%>% 

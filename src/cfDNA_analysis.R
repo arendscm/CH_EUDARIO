@@ -21,6 +21,8 @@ library(ggplot2)
 library(ggthemes)
 library(viridis)
 library(ggpubr)
+library(g3viz)
+
 #####  Data preparation ####
 ########  Load preprocessed sequencing data
 #df <- read.csv('data/interim/mutationcalls.csv')
@@ -29,22 +31,25 @@ load('data/interim/seqdata_filtered.RData')
 load('data/interim/seqdata_filtered_cf.RData')
 
 ######## Get Patient ids
-source("src/ids.R")
 source("src/material_table.R")
 
 ######## Functions and themes
 source("src/createMAF.R")
 source("src/global_functions_themes.R")
 
-##interesting gene groups
+##samples failed in sequencing
+failedSamples <-c('OvCA_44_C1D1_cf','OvCA_45_C1D1_cf','OvCA_46_C1D1_cf','OvCA_48_C1D1_cf','OvCA_50_C1D1_cf','OvCA_54_C1D1_cf','OvCA_93_C1D1_cf',
+                  'OvCA_11_C1D1_cf','OvCA_40_C1D1_cf','OvCA_53_C1D1_cf','OvCA_65_C1D1_cf')
+
+##relevant variables
 variables <- c("Patient.ID","Sample_orig","mutID","position","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "GeneDetail", "ExonicFunc", "AAChange", "cytoBand","readDepth", "TR1", "TR1_plus", "TR1_minus", "TR2", "TR2_plus", "TR2_minus", "TVAF", "AF", "avsnp150","cosmic92_coding","snp","mutFreq","p.binom","n.mut","n.material","sum_cf","sum_wb","Material","tag", "Patmut")
+
+##interesting gene groups
 ch_genes <- c("DNMT3A","TET2","ASXL1","CBL","CEBPA","GNB1","GNAS","IDH1","IDH2","JAK2","SF3B1","SRSF2","U2AF1;U2AF1L5")
 tp53_genes <- c("TP53")
 ppm1d_genes <- c("PPM1D")
 brca_genes <- c("BRCA1","BRCA2")
 hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3")
-failedSamples <-c('OvCA_44_C1D1_cf','OvCA_45_C1D1_cf','OvCA_46_C1D1_cf','OvCA_48_C1D1_cf','OvCA_50_C1D1_cf','OvCA_54_C1D1_cf','OvCA_93_C1D1_cf',
-                  'OvCA_11_C1D1_cf','OvCA_40_C1D1_cf','OvCA_53_C1D1_cf','OvCA_65_C1D1_cf')
 ch_genes_without_HRD <- c("DNMT3A","TET2","ASXL1","CBL","CEBPA","GNB1","GNAS","IDH1","IDH2","JAK2","SF3B1","SRSF2","U2AF1;U2AF1L5")
 Categories<-c('CH','HRD','other','TP53')
 
@@ -82,6 +87,7 @@ left_join(df.cf,df.cf_wb,by="cfID")%>%
   filter(snp.x == 1) %>% 
   ggplot(aes(x=Patient.ID.x,y=TVAF.x-TVAF.y)) +
   geom_point()+coord_flip()->p.cf.snp
+
 png("output/figures/p.cf.snp.png",width=5, height=7,units="in",res=500,type="cairo")
 p.cf.snp
 dev.off()
@@ -553,7 +559,7 @@ df %>%
   ggplot() + 
   geom_point(aes(x=Visite,y=TVAF,color=gene,group=Patient.ID),size=1,na.rm=FALSE) + 
   geom_line(aes(x=Visite,y=TVAF,group=position,color=gene),size=0.5,na.rm=FALSE) + 
-  facet_wrap(~ Patient.ID, ncol=6, scales="free", dir="h") +
+  facet_wrap(~ Patient.ID, ncol=8, scales="free", dir="h") +
   scale_y_continuous(limits = c(0,0.26)) +
   labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
   theme_minimal()-> p.cf.serial
@@ -747,7 +753,7 @@ df %>%
   #scale_y_continuous(limits = c(0,0.26)) +
   labs(x="Time in days",y="Variant allele frequency",colour="detected in WB/cfDNA") +
   scale_y_log10(limits=c(0.0005,0.5))+
-  theme_minimal()-> p.cf.serial
+  theme_minimal()-> p.cf.serial.tp53
 
 
 ##### serial cf data exploration 2 timepoints cf and wb HRD only

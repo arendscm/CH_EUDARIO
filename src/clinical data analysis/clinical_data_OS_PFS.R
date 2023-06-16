@@ -5,9 +5,9 @@
 #
 # Description: create master tables with clinical data and mutational data
 #
-# Input: data/extrenal/clindat_modified.xlsx, df.filtered_c1d1
+# Input: preprocessed clinical data and mutational data
 #
-# Output: data.frame with clinical and genomic data
+# Output: tables plots for response, PFS and OS
 #
 # ==============================================================================
 ########   Dependencies   #####
@@ -36,6 +36,24 @@ source("src/global_functions_themes.R")
 load("data/interim/clin.RData")
 df -> df.surv
 
+########## Response assessment ######################
+my_vars_response=c("Response_best","response_binom","response_binom2")
+
+cat_vars_response=my_vars_response
+
+df %>% CreateTableOne(strata = "CH",
+                      vars=c(my_vars_response),
+                      factorVars = cat_vars_response,
+                      includeNA=FALSE,
+                      #addOverall = TRUE,
+                      data=.) %>% 
+  print(., 
+        #nonnormal=cont_vars_ae,
+        exact=cat_vars_response,
+        missing=TRUE,
+        showAllLevels=TRUE,
+        quote=FALSE) 
+
 ########## Crude OS analysis with Kaplan Meier ##############
 
 surv_obj <- Surv(time = df.surv$OS_days, event = df.surv$OS_event)
@@ -53,18 +71,16 @@ df.surv %>%
              xlab = "Time in Days",
             # legend.title = "CH status",
             # legend.labs = c("negative", "positive")
-  ) -> p.surv
-#legend.labs = c("Group1", "Group2"),
-# ggtheme = theme_Publication())
-p.surv
+  ) -> p.os
+
+p.os
 
 png("output/figures/surv_CH.png",width=6, height=6,units="in",res=500,type="cairo")
-p.surv
+p.os
 dev.off()
 
-
 ##analyse impact of covariates
-covariates = c("Age_TreatmentStartEUDARIO","ECOG","PriorPARPi","No_Platinum_lines_binom","TumorBurden_baseline","BRCA1","BRCA2","CH")
+covariates = c("Age_TreatmentStartEUDARIO","ECOG_binom","PriorPARPi","No_Platinum_lines_binom","TumorBurden_baseline","brca1_germline","brca2_germline","CH")
 
 finalfit(df.surv, dependent="Surv(OS_days,OS_event)",explanatory=covariates)
 
@@ -86,16 +102,18 @@ df.surv %>%
              xlab = "Time in Days",
              #legend.title = "CH status",
              #legend.labs = c("negative", "positive")
-  ) -> p.surv
-#legend.labs = c("Group1", "Group2"),
-# ggtheme = theme_Publication())
-p.surv
+  ) -> p.pfs
+
+p.pfs
 
 png("output/figures/surv_CH.png",width=6, height=6,units="in",res=500,type="cairo")
-p.surv
+p.pfs
 dev.off()
 
-covariates = c("Age_TreatmentStartEUDARIO","ECOG","PriorPARPi","No_Platinum_lines_binom","TumorBurden_baseline","BRCA1","BRCA2","CH")
+##analyse impact of covariates
+covariates = c("Age_TreatmentStartEUDARIO","ECOG_binom","PriorPARPi","No_Platinum_lines_binom","TumorBurden_baseline","brca1_germline","brca2_germline","CH")
 
 finalfit(df.surv, dependent="Surv(PFS_days,PFS_event)",explanatory=covariates)
-
+#set of covariates that are predictive at p<0.1
+covariates_01 = c("ECOG_binom","PriorPARPi","TumorBurden_baseline","CH")
+finalfit(df.surv, dependent="Surv(PFS_days,PFS_event)",explanatory=covariates_01)
