@@ -19,8 +19,6 @@ library(reshape)
 library(tidyr)
 library(readxl)
 library(reshape2)
-library(ggplot2)
-library(RColorBrewer)
 library(dplyr)
 
 ########   set working directory #####
