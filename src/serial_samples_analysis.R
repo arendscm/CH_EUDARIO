@@ -145,7 +145,7 @@ df.eot %>%
   labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
   theme_minimal()-> p.serial_brca
 
-#### TEST SERIAL SAMPLES relative -> for this we need the timedifference between d1 and eot ####
+#### SERIAL SAMPLES growth preprocessing ####
 df.eot %>% 
   filter(Patmut %in% Patmut.serial2)%>%
   filter(Visite == "C1D1") %>%
@@ -203,10 +203,14 @@ p.serial
 dev.off()
 
 ####   Boxplot Growth according to DDR/non DDR ####
+stat_compare_means(comparisons = my_comp, label.y=3.05)
+
+my_comp=list(c("DNMT3A","PPM1D"),c("DNMT3A","TP53"),c("DNMT3A","CHEK2"),c("PPM1D","TET2"),c("TET2","TP53"))
+
 df.eot_rel %>% 
   filter(variable == "relvaf2") %>% 
   mutate(growthrate = log(value)/timepoint)%>%
-  filter(is.element(Gene,c("CHEK2","PPM1D","DNMT3A","TP53","TET2")))%>%
+  filter(is.element(Gene,c("CHEK2","PPM1D","DNMT3A","TP53","TET2","ATM")))%>%
   mutate(DDR = ifelse(is.element(Gene,c("TP53","PPM1D","CHEK2")),"DDR","non-DDR"))%>%
   ggboxplot(., 
             x = "Gene",
@@ -227,6 +231,7 @@ df.eot_rel %>%
             scales = "free",
             add = c("jitter")
            )+
+  stat_compare_means(comparisons=my_comp)+
   theme_minimal() + 
   theme(axis.title.x = element_blank()) +
   theme(#legend.position = "none",
@@ -237,7 +242,6 @@ df.eot_rel %>%
 png("output/figures/growth.png",width=6, height=4,units="in",res=500,type="cairo")
 p.growth
 dev.off()
-
 
 ##alternative: violin plot
 df.eot_rel %>% 
