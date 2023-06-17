@@ -69,3 +69,5 @@ df %>% CreateTableOne(strata = "CH",
         quote=FALSE) -> baseline.csv
 
 write.csv(baseline.csv, file = "output/tables/baseline_CH.csv")
+
+

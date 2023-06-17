@@ -1,3 +1,5 @@
+library(ggthemes)
+
 ##Themes
 my_theme <- function(base_size=12, base_family="Roboto") {
   (theme_foundation(base_size=base_size, base_family=base_family)
@@ -26,7 +28,6 @@ my_theme <- function(base_size=12, base_family="Roboto") {
            strip.background=element_rect(colour=NA,fill=NA)
            #strip.text = element_text(face="bold")
    ))
-  
 }
 
 

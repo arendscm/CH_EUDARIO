@@ -3,12 +3,12 @@
 #
 # Author: Max & Klara
 #
-# Description: Analysis of longitudinal data - whole blood samples
+# Description: Analysis of longitudinal data WB samples
 #
-# Input: seqdata, seqdata_filtered
+# Input: seqdata
 #
-# Output: serial sample analysis
-# press ALT-O
+# Output: serial sample analysis of cf DNA and wb DNA mutations
+# 
 # ______________________________________________________________________________
 ########   Dependencies   #####
 library(base)
@@ -19,7 +19,7 @@ library(tidyr)
 library(reshape2)
 library(ggplot2)
 library(ggthemes)
-library(viridis)
+library(ggsci)
 library(reshape)
 library(ggpubr)
 library(maftools)
@@ -28,16 +28,10 @@ library(maftools)
 #df <- read.csv('data/interim/mutationcalls.csv')
 load('data/interim/seqdata.RData')
 
-######## Get Patient ids
-source("src/ids.R")
-
-######## Get Patient ids
-load("data/interim/ids.R")
-
-
-######## Functions and themes
-
-source("src/global_functions_themes.R")
+######## Global input
+source("src/material_table.R") #Patient ids
+source("src/genegroup_definitions.R") #gene group definitions
+source("src/global_functions_themes.R") #functions and themes
 
 ########   SERIAL SAMPLES
 
@@ -72,11 +66,6 @@ df%>%
   filter(Material=="wb")%>%
   filter(Visite == "EOT")-> df.eot.eot
 
-#semi_join(df.eot.c1,df.eot.eot, by = "Patmut")->df.eot ??
-
-df.eot$Patmut%>%
-  unique()->Patmut.serial
-
 df %>% 
   filter(!is.na(Patient.ID))%>%
   filter(is.na(replicate))%>%
@@ -93,10 +82,11 @@ df.eot %>%
   filter(snp==FALSE)%>%
   filter(p.binom < -10) %>% 
   group_by(Patient.ID,position) %>%
-  mutate(maxVAF = max(TVAF)) %>%
+  mutate(maxVAF = max(TVAF),
+         minVAF = min(TVAF)) %>%
   data.frame()%>%
   filter(maxVAF > 0.008) %>%
-  filter(TVAF < 0.27)%>%
+  filter(minVAF < 0.35)%>%
   .$Patmut ->Patmut.serial2  #some "partners" get kicked out here, rescue them back
 
 df.eot%>%
@@ -108,6 +98,7 @@ df.eot%>%
   scale_y_continuous(limits = c(0,0.5)) +
   scale_y_log10()+
   labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
+  scale_color_igv()+
   theme_minimal()-> p.serial
 
 png("output/figures/p.serial.png",width=8, height=2,units="in",res=500,type="cairo")
@@ -202,15 +193,13 @@ png("output/figures/p.relvaf_ExonicFunc.png",width=6, height=4,units="in",res=50
 p.serial
 dev.off()
 
-####   Boxplot Growth according to DDR/non DDR ####
-stat_compare_means(comparisons = my_comp, label.y=3.05)
-
+####   Boxplot Fitness index according to DDR/non DDR ####
 my_comp=list(c("DNMT3A","PPM1D"),c("DNMT3A","TP53"),c("DNMT3A","CHEK2"),c("PPM1D","TET2"),c("TET2","TP53"))
 
 df.eot_rel %>% 
   filter(variable == "relvaf2") %>% 
-  mutate(growthrate = log(value)/timepoint)%>%
-  filter(is.element(Gene,c("CHEK2","PPM1D","DNMT3A","TP53","TET2","ATM")))%>%
+  #mutate(growthrate = log(value)/timepoint)%>%
+  filter(is.element(Gene,c("CHEK2","PPM1D","DNMT3A","TP53","TET2")))%>%
   mutate(DDR = ifelse(is.element(Gene,c("TP53","PPM1D","CHEK2")),"DDR","non-DDR"))%>%
   ggboxplot(., 
             x = "Gene",
@@ -218,7 +207,7 @@ df.eot_rel %>%
             order = c("TP53","PPM1D","CHEK2","TET2","DNMT3A"),
             combine = TRUE,
             color = "DDR", 
-            palette = viridis(3),
+           # palette = ,
             xlab = "Gene",
             ylab = "Fitness",
             title = "",
@@ -258,6 +247,7 @@ df.eot_rel %>%
   my_theme() + 
   theme(axis.title.x = element_blank()) +
   ylim(c(-3,8))+
+  scale_fill_npg()+
   theme(#legend.position = "none",
     axis.text.x = element_text(face="italic"),
     axis.title.y = element_text(face ="plain"),
@@ -266,92 +256,6 @@ df.eot_rel %>%
 png("output/figures/growth.png",width=6, height=4,units="in",res=500,type="cairo")
 p.growth
 dev.off()
-
-#### Print serial plot for every patient ####
-for (current_patient in EOT_ids)
-{print(current_patient)
-  Dynamicallpat%>%
-    filter(Patient.ID == current_patient)->Dynamic
-  ###Plot generieren
-  Dynamic%>%
-    ggplot(aes(y=TVAF, x=Visite, colour=Gene, group=Patmut))+
-    geom_point(size=5,alpha=0.3)+
-    geom_line(size=1)+
-    theme_minimal()+
-    scale_y_continuous(limits=c(0,0.125))+
-    labs(title="Clone Dynamics")->p.C1D1EOTdynamicpat1
-  ### create image file
-  png(paste0(current_patient,"_C1D1EOT.png"),
-      width=10,
-      height=6,
-      units="in",
-      res=500,
-      type="cairo")
-  ### plot image to file
-  print(p.C1D1EOTdynamicpat1)
-  ### close file again
-  dev.off()
-}
-
-rm(list=ls())
-
-
-
-##### Correlation of WB-cf Mutations across different timepoints ####
-load('data/interim/seqdata.RDATA')
-load('data/interim/seqdata_filtered.RDATA')
-source("src/ids.R")
-
-ids%>%
-  filter(Visite == "EOT" & Material == "cf")%>%
-  .$Patient.ID->EOTcfpat
-
-df.filtered.c1d1%>%
-  filter(tag== "true" & TVAF >= 0.01)%>%
-  filter(is.element(Patient.ID, EOTcfpat))-> mut
-
-select(mut, Patmut)->track
-
-left_join(track, df, by="Patmut")->track
-
-track%>% 
-  mutate(Patmut.material = paste(Patmut,Material, sep = "_"))->track
-##sieht noch nicht so gut aus
-track%>%
-  ggplot(aes(y=TVAF, x=Visite, colour= Gene, group=Patmut.material))+
-  geom_point(size=5,alpha=0.3)+
-  geom_line(aes(x=Visite,y=TVAF,group=Patmut.material,color= Gene,linetype=Material),size=1*1,na.rm=FALSE) + 
-  theme_minimal()+
-  scale_y_continuous(limits=c(0,0.2))+
-  labs(title="Clone Dynamics")+
-  facet_wrap(~Patient.ID)->test
-
-
-track%>%
-  filter(Visite == "EOT")->EOTcorr
-EOTcorr%>%
-  filter(Material == "cf")->EOTcorrcf
-EOTcorr%>%
-  filter(Material == "wb")->EOTcorrwb
-full_join(EOTcorrwb,EOTcorrcf,by="Patmut")->test
-  #filter(TVAF.x <= 0.4)%>%
-ggscatter(., 
-          y = "TVAF.x", 
-          x = "TVAF.y", 
-          add = "reg.line", 
-          #conf.int = TRUE, 
-          cor.coef = TRUE, 
-          cor.method = "pearson",
-          size=1,
-          xlab = "VAF cfDNA", 
-          ylab = "VAF wholeblood", 
-          title="EOT VAF Correlation")->p.EOTcorr
-
-png("output/figures/EOTcorr.png",width=6, height=4,units="in",res=500,type="cairo")
-p.EOTcorr
-dev.off()
-
-
 
 
 
