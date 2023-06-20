@@ -45,12 +45,7 @@ failedSamples <-c('OvCA_44_C1D1_cf','OvCA_45_C1D1_cf','OvCA_46_C1D1_cf','OvCA_48
 variables <- c("Patient.ID","Sample_orig","mutID","position","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "GeneDetail", "ExonicFunc", "AAChange", "cytoBand","readDepth", "TR1", "TR1_plus", "TR1_minus", "TR2", "TR2_plus", "TR2_minus", "TVAF", "AF", "avsnp150","cosmic92_coding","snp","mutFreq","p.binom","n.mut","n.material","sum_cf","sum_wb","Material","tag", "Patmut")
 
 ##interesting gene groups
-ch_genes <- c("DNMT3A","TET2","ASXL1","CBL","CEBPA","GNB1","GNAS","IDH1","IDH2","JAK2","SF3B1","SRSF2","U2AF1;U2AF1L5")
-tp53_genes <- c("TP53")
-ppm1d_genes <- c("PPM1D")
-brca_genes <- c("BRCA1","BRCA2")
-hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3")
-ch_genes_without_HRD <- c("DNMT3A","TET2","ASXL1","CBL","CEBPA","GNB1","GNAS","IDH1","IDH2","JAK2","SF3B1","SRSF2","U2AF1;U2AF1L5")
+source("src/genegroup_definitions.R")
 Categories<-c('CH','HRD','other','TP53')
 
 #dataframe with mutation calls from cfDNA             
@@ -84,9 +79,14 @@ df %>%
 
 #####  Identity check via SNP  ####
 left_join(df.cf,df.cf_wb,by="cfID")%>%
+  filter(Patient.ID.x %in% c("4202011","4202020","4202005","4202006"))%>%
   filter(snp.x == 1) %>% 
   ggplot(aes(x=Patient.ID.x,y=TVAF.x-TVAF.y)) +
-  geom_point()+coord_flip()->p.cf.snp
+  geom_point()+
+  coord_flip()+
+  theme(axis.text.x =element_text(angle=90)) ->p.cf.snp
+
+p.cf.snp
 
 png("output/figures/p.cf.snp.png",width=5, height=7,units="in",res=500,type="cairo")
 p.cf.snp

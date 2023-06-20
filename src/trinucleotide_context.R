@@ -131,7 +131,7 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
                   "compartment"))-> df.sig
 
 ##create GRanges object 
-gr.sig <- makeGRangesFromDataFrame(df.sig,
+gr.sig <- makeGRangesFromDataFrame(df.sig %>% filter(!is.na(start)),
                          keep.extra.columns=TRUE,
                          ignore.strand=TRUE,
                          seqinfo=NULL,

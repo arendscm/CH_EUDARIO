@@ -22,13 +22,17 @@ library(ggthemes)
 library(viridis)
 library(ggpubr)
 library(g3viz)
+library(ggsci)
 
 #####  Data preparation ####
 ########  Load preprocessed sequencing data
 #df <- read.csv('data/interim/mutationcalls.csv')
+load('data/interim/clin.RData')
+df -> df.clin
 load('data/interim/seqdata.RData')
 load('data/interim/seqdata_filtered.RData')
 load('data/interim/seqdata_filtered_cf.RData')
+
 
 ######## Global input
 source("src/material_table.R") #patient ids
@@ -471,13 +475,14 @@ p.cf.serial
 dev.off()
 
 
-
 ####### serial analysis in patients with 3 timepoints 
 df %>% 
   filter(!is.na(Patient.ID))%>%
   filter(is.na(replicate))%>%
   filter(c1d1_wb==1) %>% 
   filter(c1d1_cf==1&c7d1_cf==1&(ue_cf==1|eot_cf==1))%>%
+  filter(sum_cf==3)%>%
+  filter(Material=="cf")%>%
   mutate(timepoint = ifelse(Visite == "C1D1",0,
                             ifelse(Visite == "EOT",tEOT,
                                    ifelse(Visite=="UE",tUE,
@@ -490,13 +495,30 @@ df.cf_serial %>%
   filter(AF<0.1)%>%
   filter(snp==FALSE)%>%
   filter(p.binom < -10) %>% 
+  mutate(fraction_mut = mutFreq/n.lane) %>%
   group_by(Patient.ID,position) %>%
   mutate(maxVAF = max(TVAF),
          minVAF = min(TVAF)) %>%
   data.frame()%>%
   filter(maxVAF > 0.008) %>%
-  filter(minVAF < 0.35)%>%
+  filter(minVAF < 0.35) %>%
+  filter(fraction_mut < 0.2) %>%
   .$Patmut -> Patmut.serial
+
+###all clones by patient
+df.cf_serial%>%
+  filter(Patmut %in% Patmut.serial)%>%
+  filter(Material == "cf")%>%
+  #filter(Gene %in% ch_genes)%>%
+  #filter(TVAF < 0.38) %>%
+  ggplot() + 
+  geom_point(aes(x=timepoint,y=TVAF,color=Gene,group=Patient.ID),size=1,na.rm=FALSE) + 
+  geom_line(aes(x=timepoint,y=TVAF,group=Patmut,color=Gene),size=0.5,na.rm=FALSE) + 
+  facet_wrap(~ Patient.ID, ncol=6, dir="h") +
+  scale_y_log10()+
+  scale_color_igv()+
+  labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
+  theme_minimal() -> p.cf.serial
 
 
 df.cf_serial %>% 
@@ -539,72 +561,132 @@ df.cf_c7eot <- full_join(df.cf_c7d1,df.cf_eotue,by=c("Patient.ID","Gene","AAChan
   mutate(fitness = log(vaf_eot/vaf_c7d1*(1-2*vaf_c7d1)/(1-2*vaf_eot))/(timepoint/365))%>%
   melt.data.frame(measure.vars = c("relvaf1","relvaf2"))
 
-###growth c1-c7
-my_comp=list(c("DNMT3A","PPM1D"),c("DNMT3A","TP53"),c("DNMT3A","CHEK2"),c("PPM1D","TET2"),c("TET2","TP53"))
 
-df.cf_c1c7 %>% 
-  filter(variable == "relvaf2") %>% 
-  #mutate(growthrate = log(value)/timepoint)%>%
-  filter(is.element(Gene,c("CHEK2","PPM1D","DNMT3A","TP53","TET2")))%>%
-  mutate(DDR = ifelse(is.element(Gene,c("TP53","PPM1D","CHEK2")),"DDR","non-DDR"))%>%
-  ggboxplot(., 
-            x = "Gene",
-            y = "fitness",
-            order = c("TP53","PPM1D","CHEK2","TET2","DNMT3A"),
-            combine = TRUE,
-            color = "DDR", 
-            # palette = ,
-            xlab = "Gene",
-            ylab = "Fitness",
-            title = "",
-            width = 0.3,
-            #ylim = c(-0.01,0.02),
-            size=0.8,
-            alpha=1,
-            repel=TRUE,
-            #yscale = "log10",
-            scales = "free",
-            add = c("jitter")
-  )+
-  stat_compare_means(comparisons=my_comp)+
-  theme_minimal() + 
-  theme(axis.title.x = element_blank()) +
-  theme(#legend.position = "none",
-    axis.text.x = element_text(face="italic"),
-    axis.title.y = element_text(face ="plain"),
-    plot.title = element_text(hjust=0,face ="plain")) ->p.growth
+###direct comparison of clone fitnesss c1c7 vs c7eot only in patients which had 5 or 6 cycles of Platinum 
+full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%select(Patient.ID,position,Gene,fitness),
+          df.cf_c7eot%>%filter(variable=="relvaf2")%>%select(Patient.ID,position,Gene,fitness),
+          by=c("Patient.ID","Gene","position")) %>%
+  filter(Patient.ID %in% (df.clin %>% filter(Number_ChemotherapyCycles > 5))$Patient.ID)%>%
+  mutate(fitness_platinum = fitness.x, 
+         fitness_maintenance = fitness.y)%>%
+  dplyr::select(-fitness.x,-fitness.y)%>%
+  mutate(Patmut = paste(Patient.ID,position,sep="_"))%>%
+  melt.data.frame(measure.vars = c("fitness_platinum","fitness_maintenance"))%>%
+  filter(Gene %in% c("CHEK2","PPM1D","DNMT3A","TP53","TET2"))%>%
+  ggplot(aes(x=variable,y=value,color=Gene))+
+  geom_boxplot(color="grey")+
+  geom_point()+
+  geom_line(aes(group=Patmut))+
+  ylim(c(-15,15))+
+  scale_color_npg()+
+  facet_grid(~Gene)+
+  theme_minimal()
 
-##growth c7_eot
-df.cf_c7eot %>% 
-  filter(variable == "relvaf2") %>% 
-  #mutate(growthrate = log(value)/timepoint)%>%
-  filter(is.element(Gene,c("CHEK2","PPM1D","DNMT3A","TP53","TET2")))%>%
-  mutate(DDR = ifelse(is.element(Gene,c("TP53","PPM1D","CHEK2")),"DDR","non-DDR"))%>%
-  ggboxplot(., 
-            x = "Gene",
-            y = "fitness",
-            order = c("TP53","PPM1D","CHEK2","TET2","DNMT3A"),
-            combine = TRUE,
-            color = "DDR", 
-            # palette = ,
-            xlab = "Gene",
-            ylab = "Fitness",
-            title = "",
-            width = 0.3,
-            #ylim = c(-0.01,0.02),
-            size=0.8,
-            alpha=1,
-            repel=TRUE,
-            #yscale = "log10",
-            scales = "free",
-            add = c("jitter")
-  )+
-  stat_compare_means(comparisons=my_comp)+
-  theme_minimal() + 
-  theme(axis.title.x = element_blank()) +
-  theme(#legend.position = "none",
-    axis.text.x = element_text(face="italic"),
-    axis.title.y = element_text(face ="plain"),
-    plot.title = element_text(hjust=0,face ="plain"))
+  
+#### boxplot with p values
+
+full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%select(Patient.ID,position,Gene,fitness),
+          df.cf_c7eot%>%filter(variable=="relvaf2")%>%select(Patient.ID,position,Gene,fitness),
+          by=c("Patient.ID","Gene","position")) %>%
+  filter(Patient.ID %in% (df.clin %>% filter(Number_ChemotherapyCycles > 5))$Patient.ID)%>%
+  mutate(fitness_platinum = fitness.x, 
+         fitness_maintenance = fitness.y)%>%
+  dplyr::select(-fitness.x,-fitness.y)%>%
+  mutate(Patmut = paste(Patient.ID,position,sep="_"))%>%
+  melt.data.frame(measure.vars = c("fitness_platinum","fitness_maintenance"))%>%
+  filter(Gene %in% c("CHEK2","PPM1D","DNMT3A","TP53","TET2"))%>%
+  ggboxplot(.,
+              x = "variable",
+              y = "value",
+              #combine = TRUE,
+              #color = "DDR", 
+              # palette = ,
+              facet.by= "Gene",
+              xlab = "Therapy",
+              ylab = "Fitness",
+              title = "",
+              width = 0.3,
+              #ylim = c(-5,10),
+              size=0.8,
+              alpha=1,
+              repel=TRUE,
+              #yscale = "log10",
+              scales = "free",
+              add = c("jitter")
+  )+  stat_compare_means()
 
 
+##scatterplot growthrate Platinum+PARPi vs PARPI maintenance
+full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%select(Patient.ID,position,Gene,fitness),
+          df.cf_c7eot%>%filter(variable=="relvaf2")%>%select(Patient.ID,position,Gene,fitness),
+          by=c("Patient.ID","Gene","position")) %>%
+  filter(Patient.ID %in% (df.clin %>% filter(Number_ChemotherapyCycles > 5))$Patient.ID)%>%
+  mutate(fitness_platinum = fitness.x, 
+         fitness_maintenance = fitness.y)%>%
+  dplyr::select(-fitness.x,-fitness.y)%>%
+  mutate(Patmut = paste(Patient.ID,position,sep="_"))%>%
+  group_by(Gene)%>%
+  summarise(med.fit.plat = mean(fitness_platinum),
+            med.fit.maint = mean(fitness_maintenance),
+            err.fit.plat = sd(fitness_platinum)/sqrt(n()),
+            err.fit.maint = sd(fitness_maintenance)/sqrt(n()),
+            size=n())%>%
+  data.frame %>%
+  filter(size>5)%>%
+  ggplot(aes(x=med.fit.plat,y=med.fit.maint,color=Gene))+
+  geom_point(aes(size=size),alpha = 1)+
+  geom_errorbar(aes(xmin=med.fit.plat-err.fit.plat,xmax=med.fit.plat+err.fit.plat),width=0.2)+
+  geom_errorbar(aes(ymin=med.fit.maint-err.fit.maint,ymax=med.fit.maint+err.fit.maint),width=0.2)+
+  scale_color_npg()+
+  geom_abline(slope=1,intercept=0)+
+  ylim(c(-5,5))+
+  xlim(c(-5,5))
+  theme_minimal()
+  
+  
+  
+  
+  
+  ######### identity check for sequential plasma samples
+  df %>% 
+    filter(!is.na(Patient.ID))%>%
+    filter(is.na(replicate))%>%
+    filter(c1d1_wb==1) %>% 
+    filter(c1d1_cf==1&c7d1_cf==1&(ue_cf==1|eot_cf==1))%>%
+    filter(sum_cf==3)%>%
+    filter(Material=="cf")%>%
+    mutate(timepoint = ifelse(Visite == "C1D1",0,
+                              ifelse(Visite == "EOT",tEOT,
+                                     ifelse(Visite=="UE",tUE,
+                                            ifelse(Visite=="C7D1",tC7D1,NA)))))-> df.cf_serial
+  
+  
+  df.cf_serial %>% 
+    filter(snp)%>%
+    filter(Visite == "C1D1") %>%
+    mutate(vaf_c1d1=TVAF) %>%
+    dplyr::select(Patient.ID,Gene,AAChange,ExonicFunc,position,vaf_c1d1,timepoint)-> df.cf_c1d1
+  
+  df.cf_serial %>% 
+    filter(snp)%>%
+    filter(Visite == "C7D1") %>%
+    mutate(vaf_c7d1=TVAF) %>%
+    dplyr::select(Patient.ID,Gene,AAChange,ExonicFunc,position,vaf_c7d1,timepoint)-> df.cf_c7d1
+  
+  df.cf_serial %>% 
+    filter(snp)%>%
+    filter(Visite == "UE") %>%
+    mutate(vaf_eot=TVAF) %>%
+    dplyr::select(Patient.ID,Gene,AAChange,ExonicFunc,position,vaf_eot,timepoint)-> df.cf_ue
+  
+  df.cf_serial %>% 
+    filter(snp)%>%
+    filter(Visite == "EOT") %>%
+    mutate(vaf_eot=TVAF) %>%
+    dplyr::select(Patient.ID,Gene,AAChange,ExonicFunc,position,vaf_eot,timepoint)-> df.cf_eot
+  
+  
+  join_var = c("Patient.ID","Gene","AAChange","ExonicFunc","position")
+  full_join(df.cf_c1d1,
+            full_join(df.cf_c7d1,
+                      full_join(df.cf_ue,df.cf_eot,by=join_var),by=join_var),by=join_var)
