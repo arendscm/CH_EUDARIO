@@ -563,8 +563,8 @@ df.cf_c7eot <- full_join(df.cf_c7d1,df.cf_eotue,by=c("Patient.ID","Gene","AAChan
 
 
 ###direct comparison of clone fitnesss c1c7 vs c7eot only in patients which had 5 or 6 cycles of Platinum 
-full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%select(Patient.ID,position,Gene,fitness),
-          df.cf_c7eot%>%filter(variable=="relvaf2")%>%select(Patient.ID,position,Gene,fitness),
+full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
+          df.cf_c7eot%>%filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
           by=c("Patient.ID","Gene","position")) %>%
   filter(Patient.ID %in% (df.clin %>% filter(Number_ChemotherapyCycles > 5))$Patient.ID)%>%
   mutate(fitness_platinum = fitness.x, 
@@ -617,8 +617,8 @@ full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%select(Patient.ID,positio
 
 
 ##scatterplot growthrate Platinum+PARPi vs PARPI maintenance
-full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%select(Patient.ID,position,Gene,fitness),
-          df.cf_c7eot%>%filter(variable=="relvaf2")%>%select(Patient.ID,position,Gene,fitness),
+full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
+          df.cf_c7eot%>%filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
           by=c("Patient.ID","Gene","position")) %>%
   filter(Patient.ID %in% (df.clin %>% filter(Number_ChemotherapyCycles > 5))$Patient.ID)%>%
   mutate(fitness_platinum = fitness.x, 
