@@ -75,8 +75,27 @@ df.clin <- df.clin_orig %>%
          ae_haematotox_severe = is.element(Patient.ID,(df.ae %>%
                                                          filter(is.element(AE_consensus_term,c("neutropenia","thrombocytopenia","anemia"))&AE_18_severity>2)%>%
                                                          dplyr::select(patient_code)%>% 
-                                                         unique)$patient_code))%>%
-  filter(is.element(Patient.ID,df.material$Patient.ID)) %>% #only patients with available seq data
+                                                         unique)$patient_code),
+         ae_infection = is.element(Patient.ID,(df.ae %>%
+                                                         filter(is.element(AE_consensus_term,c("infection")))%>%
+                                                         dplyr::select(patient_code)%>% 
+                                                         unique)$patient_code),
+         ae_infection_severe = is.element(Patient.ID,(df.ae %>%
+                                                 filter(is.element(AE_consensus_term,c("infection"))&AE_18_severity>2)%>%
+                                                 dplyr::select(patient_code)%>% 
+                                                 unique)$patient_code),
+         ae_allergic_reaction = is.element(Patient.ID,(df.ae %>%
+                                                         filter(is.element(AE_consensus_term,c("allergic reaction")))%>%
+                                                         dplyr::select(patient_code)%>% 
+                                                         unique)$patient_code),
+         ae_allergic_reaction_severe = is.element(Patient.ID,(df.ae %>%
+                                                         filter(is.element(AE_consensus_term,c("allergic reaction"))&AE_18_severity>2)%>%
+                                                         dplyr::select(patient_code)%>% 
+                                                         unique)$patient_code),
+         )%>%
+  
+  
+  filter(is.element(Patient.ID,ids %>% filter(firstTimepoint_wb==1) %>%.$Patient.ID)) %>% #only patients with available seq data
   left_join(.,id.brca_germline, by="Patient.ID") #add BRCA germline status
 
 
@@ -129,6 +148,9 @@ df <- df.clin %>%
 tempdata <-ls()
 rm(list=tempdata[tempdata != "df"])
 rm(tempdata)
+
+df -> df.clin
+rm(df)
 
 save.image('data/interim/clin.RData')
 

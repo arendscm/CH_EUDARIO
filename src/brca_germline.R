@@ -37,7 +37,7 @@ brcaexchange <- read.table("data/external/BRCA_Exchange_Liste_shortend.csv",sep=
 df %>% 
   filter(!is.na(Patient.ID))%>%
   filter(is.na(replicate))%>%
-  filter(Visite == "C1D1")%>%
+  filter(firstTimepoint_wb == 1)%>%
   filter(Material == "wb")%>%
   filter(Gene == "BRCA1"|Gene =="BRCA2") %>%
   filter(TVAF > 0.1) %>%

@@ -35,11 +35,15 @@ my_vars_ae=c("ae_haematotox",
              "ae_neutropenia",
              "ae_thrombocytopenia",
              "ae_anemia",
-             "ae_haematotox_severe")
+             "ae_haematotox_severe",
+             "ae_infection",
+             "ae_infection_severe",
+             "ae_allergic_reaction",
+             "ae_allergic_reaction_severe")
 
 cat_vars_ae=my_vars_ae
 
-df %>% CreateTableOne(strata = "CH",
+df.clin %>% CreateTableOne(strata = "CH",
                       vars=c(my_vars_ae),
                       factorVars = cat_vars_ae,
                       includeNA=FALSE,

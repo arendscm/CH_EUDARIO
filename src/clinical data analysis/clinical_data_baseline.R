@@ -22,13 +22,16 @@ library(readxl)
 library(reshape2)
 library(dplyr)
 library(tableone)
+library(ggplot2)
+library(ggsci)
 
-########   Load IDs    ########
+########   Global input    ########
 source("src/material_table.R")
+source("src/global_functions_themes.R")
 
 ########## Load clinical data  ##########
 load("data/interim/clin.RData")
-
+df.clin -> df
 ########   Create Table with baseline characteristics    ########
 #baseline variables
 my_vars_baseline=c("Arm",
@@ -62,7 +65,7 @@ df %>% CreateTableOne(strata = "CH",
                       #addOverall = TRUE,
                       data=.) %>% 
   print(., 
-        #nonnormal=cont_vars_baseline,
+        nonnormal=cont_vars_baseline,
         exact=cat_vars_baseline,
         missing=TRUE,
         showAllLevels=TRUE,
@@ -70,4 +73,21 @@ df %>% CreateTableOne(strata = "CH",
 
 write.csv(baseline.csv, file = "output/tables/baseline_CH.csv")
 
+
+######### Plot age distribution #######################
+df %>% mutate(nom = ifelse(nom==0,"0",ifelse(nom==1,"1",">1")))%>%
+  mutate(nom = factor(nom,levels=c("0","1",">1")))%>%
+  ggplot(aes(x = Age_TreatmentStartEUDARIO)) + 
+  geom_histogram(aes(y=..count..,fill=as.factor(nom)),size=1,position="stack",binwidth=10)  +
+  scale_fill_npg(breaks=c("0","1",">1"),name="No. mutations") +
+  xlab("Age in Years") + 
+  #xlim(15,85) +
+  ylab("Number of Patients") + 
+  #ggtitle("Age Distribution according to CH status") +
+  my_theme()  -> p.agedens 
+p.agedens
+
+png("output/figures/agedens.png",width=6, height=5,units="in",res=500,type="cairo")
+p.agedens
+dev.off()
 

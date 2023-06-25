@@ -23,7 +23,6 @@ library(reshape2)
 library(dplyr)
 library(tableone)
 library(ggplot2)
-library(ggsci)
 
 ########   Load IDs    ########
 source("src/material_table.R")
@@ -36,87 +35,51 @@ load("data/interim/seqdata_filtered.RData")
 
 ######## Plot with mut spectrum in pts with and without prior PARPi
 
-df.clin$PriorPARPi %>% table %>% data.frame -> n.parp
-names(n.parp) <- c("PriorPARPi","n.parp")
+df.clin %>% mutate(BRCA_germline = brca1_germline+brca2_germline) -> df.clin
+df.clin$BRCA_germline %>% table %>% data.frame -> n.brca
+names(n.brca) <- c("BRCA_germline","n.brca")
 
 genes=c("DNMT3A","TET2","ASXL1","PPM1D","TP53","CHEK2","ATM")
 
-df.filtered.c1d1 %>% 
-  left_join(.,df.clin %>% 
-              group_by(PriorPARPi) %>% 
-              mutate(n.parp = n()) %>% 
-              data.frame %>% 
-              dplyr::select(Patient.ID, PriorPARPi,n.parp)%>%
-              mutate(PriorPARPi = factor(PriorPARPi,levels=c("Yes","No"))))%>%
+df.filtered.c1d1 %>% left_join(.,df.clin %>% 
+                                 group_by(BRCA_germline) %>% 
+                                 mutate(n.brca = n()) %>% 
+                                 data.frame %>% 
+                                 dplyr::select(Patient.ID, BRCA_germline,n.brca))%>%
   filter(tag == "true") %>%
   filter(TVAF >= 0.01) %>%
   filter(Gene %in% genes)%>%
-  dplyr::select(Sample, Gene, PriorPARPi,n.parp) %>% 
+  dplyr::select(Sample, Gene, BRCA_germline,n.brca) %>% 
   data.frame %>% 
   unique %>% 
-  dplyr::select(Gene,PriorPARPi) %>% 
+  dplyr::select(Gene,BRCA_germline) %>% 
   table %>% 
   data.frame %>% 
-  left_join(.,n.parp)%>%
-  mutate(prev = Freq/n.parp) %>% 
+  left_join(.,n.brca)%>%
+  mutate(prev = Freq/n.brca) %>% 
   arrange(prev) %>%
-  ggplot(aes(x=reorder(Gene, Freq), y=prev, fill=PriorPARPi)) +
+  ggplot(aes(x=reorder(Gene, Freq), y=prev, fill=BRCA_germline)) +
   geom_bar(stat="identity", width=0.6, position=position_dodge())+
   xlab("")+
-  scale_y_continuous(labels = percent,limits=c(0,0.6), position = "right")+
-  ylab("Gene Mutation Prevalence [%]") +
-  my_theme()+
-  scale_fill_npg(name="Prior PARPi therapy")+
-  theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35,face="italic")) +
-  coord_flip() -> p.mutprev_parpi
-p.mutprev_parpi
-
-png("output/figures/mutprev_priorparpi.png",width=6, height=6,units="in",res=500,type="cairo")
-p.mutprev_parpi
-dev.off()
-
-
-####### mut spect in pats with differing no of prior platinum lines
-
-df.clin$No_Platinum_lines_binom %>% table %>% data.frame -> n.plat
-names(n.plat) <- c("No_Platinum_lines_binom","n.plat")
-
-genes=c("DNMT3A","TET2","ASXL1","PPM1D","TP53","CHEK2","ATM")
-
-df.filtered.c1d1 %>% left_join(.,df.clin  %>% dplyr::select(Patient.ID, No_Platinum_lines_binom))%>%
-  filter(tag == "true") %>%
-  filter(TVAF >= 0.01) %>%
-  filter(Gene %in% genes)%>%
-  dplyr::select(Sample, Gene, No_Platinum_lines_binom) %>% 
-  data.frame %>% 
-  unique %>% 
-  dplyr::select(Gene,No_Platinum_lines_binom) %>% 
-  table %>% 
-  data.frame %>% 
-  left_join(.,n.plat)%>%
-  mutate(prev = Freq/n.plat) %>% 
-  arrange(prev) %>%
-  ggplot(aes(x=reorder(Gene, Freq), y=prev, fill=No_Platinum_lines_binom)) +
-  geom_bar(stat="identity", width=0.6, position=position_dodge())+
-  xlab("")+
-  scale_y_continuous(labels = percent,limits=c(0,0.6), position = "right")+
+  scale_y_continuous(labels = percent,limits=c(0,0.4), position = "right")+
   ylab("Gene Mutation Prevalence [%]") +
   my_theme()+
   scale_fill_npg()+
   theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35,face="italic")) +
-  coord_flip() -> p.mutprev_plat
-p.mutprev_plat
-  
+  coord_flip() -> p.mutprev_brca
+p.mutprev_brca
 
-png("output/figures/mutprev_priorplatinum.png",width=6, height=6,units="in",res=500,type="cairo")
-p.mutprev_plat
+png("output/figures/mutprev_brca.png",width=6, height=6,units="in",res=500,type="cairo")
+p.mutprev_brca
 dev.off()
+
 
 #####determinants of ch
 
 my_vars_baseline=c("Arm",
                    "BRCA1",
                    "BRCA2",
+                   "BRCA_germline",
                    "ECOG",
                    "LVEF_C1D1",
                    "TumorBurden_baseline",
@@ -131,6 +94,7 @@ my_vars_baseline=c("Arm",
 cat_vars_baseline=c("Arm",
                     "BRCA1",
                     "BRCA2",
+                    "BRCA_germline",
                     "ECOG",
                     "Type_PreviousTherapy",
                     "PriorPARPi",
@@ -138,7 +102,7 @@ cat_vars_baseline=c("Arm",
 
 cont_vars_baseline = setdiff(my_vars_baseline,cat_vars_baseline)
 
-df.clin %>% CreateTableOne(strata = "CH",
+df.clin %>% CreateTableOne(strata = "DDR",
                       vars=c(my_vars_baseline),
                       factorVars = cat_vars_baseline,
                       includeNA=FALSE,
@@ -151,10 +115,9 @@ df.clin %>% CreateTableOne(strata = "CH",
         showAllLevels=TRUE,
         quote=FALSE)
 
-
 ####### logistic regression ########################
 
-log.reg <- glm(CH ~ Age_TreatmentStartEUDARIO + PriorPARPi + Number_PreviousPlatinumLines, family="binomial",data=df.clin)
+log.reg <- glm(CH ~ Age_TreatmentStartEUDARIO + PriorPARPi + Number_PreviousLines + BRCA_germline, family="binomial",data=df.clin)
 summary(log.reg)
 
 

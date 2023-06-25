@@ -23,6 +23,7 @@ library(ggsci)
 library(reshape)
 library(ggpubr)
 library(maftools)
+library(ggsci)
 
 ########  Load preprocessed sequencing data
 #df <- read.csv('data/interim/mutationcalls.csv')
@@ -38,12 +39,13 @@ source("src/global_functions_themes.R") #functions and themes
 #### identity check via SNPs ####
 df %>% 
   filter(Visite=="EOT") %>% 
+  filter(Material=="wb")%>%
   mutate(ID=paste(Patient.ID,position))-> df.eot1
 
-ids %>% filter(Visite=="EOT") -> eotsamples
+ids %>% filter(Visite=="EOT",Material == "wb") -> eotsamples
 
 df %>% 
-  filter(Visite=="C1D1") %>% 
+  filter(Visite=="C1D1", Material == "wb") %>% 
   filter(is.element(Patient.ID,eotsamples$Patient.ID)) %>%
   mutate(ID=paste(Patient.ID,position)) -> df.c1d0
 
@@ -80,13 +82,14 @@ df.eot %>%
   filter(Func == "exonic"|Func == "splicing"|Func == "exonic;splicing") %>%
   filter(AF<0.1)%>%
   filter(snp==FALSE)%>%
-  filter(p.binom < -10) %>% 
   group_by(Patient.ID,position) %>%
   mutate(maxVAF = max(TVAF),
-         minVAF = min(TVAF)) %>%
+         minVAF = min(TVAF),
+         minp.binom = min(p.binom)) %>%
   data.frame()%>%
   filter(maxVAF > 0.008) %>%
-  filter(minVAF < 0.35)%>%
+  filter(minVAF < 0.4)%>%
+  filter(minp.binom ==-Inf) %>% 
   .$Patmut ->Patmut.serial2  #some "partners" get kicked out here, rescue them back
 
 df.eot%>%
@@ -94,15 +97,36 @@ df.eot%>%
   ggplot() + 
   geom_point(aes(x=timepoint,y=TVAF,color=Gene,group=Patient.ID),size=1,na.rm=FALSE) + 
   geom_line(aes(x=timepoint,y=TVAF,group=position,color=Gene),size=0.5,na.rm=FALSE) + 
-  facet_wrap(~ Patient.ID, ncol=10, dir="h") +
+  facet_wrap(~ Patient.ID, ncol=9, dir="h") +
   scale_y_continuous(limits = c(0,0.5)) +
   scale_y_log10()+
   labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
   scale_color_igv()+
   theme_minimal()-> p.serial
-
-png("output/figures/p.serial.png",width=8, height=2,units="in",res=500,type="cairo")
 p.serial
+
+png("output/figures/p.serial_wb.png",width=12, height=8,units="in",res=500,type="cairo")
+p.serial
+dev.off()
+
+##same plot with CH genes only
+
+df.eot%>%
+  filter(Gene %in% ch_genes)%>%
+  filter(Patmut %in% Patmut.serial2)%>%
+  ggplot() + 
+  geom_point(aes(x=timepoint,y=TVAF,color=Gene,group=Patient.ID),size=1,na.rm=FALSE) + 
+  geom_line(aes(x=timepoint,y=TVAF,group=position,color=Gene),size=0.5,na.rm=FALSE) + 
+  facet_wrap(~ Patient.ID, ncol=8, dir="h") +
+  scale_y_continuous(limits = c(0,0.5)) +
+  scale_y_log10()+
+  labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
+  scale_color_npg()+
+  theme_minimal()-> p.serial_ch
+p.serial_ch
+
+png("output/figures/p.serial_wb_ch.png",width=12, height=8,units="in",res=500,type="cairo")
+p.serial_ch
 dev.off()
 
 ##Examples
@@ -122,19 +146,6 @@ p.serial
 dev.off()
 
 
-#### Serial samples by brca status (question: do dynamics unter PARP Inhb. differ depending on BRCA status?) ####
-df.eot %>% 
-  filter(Patmut %in% Patmut.serial2)%>%
-  left_join(.,id.brca_germline,by = "Patient.ID")%>%
-  mutate(brca_germline=brca1_germline+brca2_germline)%>%
-  filter(Gene=="PPM1D"|Gene=="TP53")%>%
-  ggplot() + 
-  geom_point(aes(x=timepoint,y=TVAF,color=Gene,group=Patient.ID),size=1.5,na.rm=FALSE) + 
-  geom_line(aes(x=timepoint,y=TVAF,group=position,color=Gene),size=1*1,na.rm=FALSE) + 
-  facet_wrap(~ brca_germline, ncol=2, scales="free", dir="h") +
-  scale_y_continuous(limits = c(0,0.26)) +
-  labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
-  theme_minimal()-> p.serial_brca
 
 #### SERIAL SAMPLES growth preprocessing ####
 df.eot %>% 
@@ -154,15 +165,6 @@ df.eot_rel <- full_join(df.eotd1,df.eoteot) %>% mutate(relvaf1 = vaf_d1/vaf_d1,
   mutate(fitness = log(vaf_eot/vaf_d1*(1-2*vaf_d1)/(1-2*vaf_eot))/(timepoint/365))%>%
   melt.data.frame(measure.vars = c("relvaf1","relvaf2"))
 
-
-####   growth when first vaf set to value 1.0  ####
-df.eot_rel %>%  
-  ggplot() + 
-  geom_point(aes(x=timepoint,y=value,color=Gene,group=Patient.ID),size=1.5,na.rm=FALSE) + 
-  geom_line(aes(x=timepoint,y=value,group=position,color=Gene),size=1*1,na.rm=FALSE) + 
-  scale_y_log10() +
-  labs(x="Timepoint",y="log(VAF change)",colour="Mutated Gene") +
-  theme_minimal()-> p.vafchange
 
 ####   plot rel vaf2 as points according to gene ####
 df.eot_rel %>% 
@@ -194,7 +196,7 @@ p.serial
 dev.off()
 
 ####   Boxplot Fitness index according to DDR/non DDR ####
-my_comp=list(c("DNMT3A","PPM1D"),c("DNMT3A","TP53"),c("DNMT3A","CHEK2"),c("PPM1D","TET2"),c("TET2","TP53"))
+my_comp=list(c("DNMT3A","TP53"),c("PPM1D","TET2"),c("DNMT3A","PPM1D"))
 
 df.eot_rel %>% 
   filter(variable == "relvaf2") %>% 
@@ -212,7 +214,7 @@ df.eot_rel %>%
             ylab = "Fitness",
             title = "",
             width = 0.3,
-            #ylim = c(-0.01,0.02),
+            ylim = c(-4,16),
             size=0.8,
             alpha=1,
             repel=TRUE,
@@ -220,19 +222,22 @@ df.eot_rel %>%
             scales = "free",
             add = c("jitter")
            )+
-  stat_compare_means(comparisons=my_comp)+
+  stat_compare_means(comparisons=my_comp,label="p.signif",vjust=0.01,label.y = c(10,12,14))+
+  scale_color_npg()+
   theme_minimal() + 
   theme(axis.title.x = element_blank()) +
   theme(#legend.position = "none",
         axis.text.x = element_text(face="italic"),
         axis.title.y = element_text(face ="plain"),
-        plot.title = element_text(hjust=0,face ="plain")) ->p.growth
+        plot.title = element_text(hjust=0,face ="plain")) ->p.fitness_boxplot
 
-png("output/figures/growth.png",width=6, height=4,units="in",res=500,type="cairo")
-p.growth
+png("output/figures/fitness_boxplot.png",width=5, height=5,units="in",res=500,type="cairo")
+p.fitness_boxplot
 dev.off()
 
 ##alternative: violin plot
+my_comp=list(c("DNMT3A","TP53"),c("DNMT3A","PPM1D"))
+
 df.eot_rel %>% 
   filter(variable == "relvaf2") %>% 
   group_by(Gene)%>%
@@ -246,16 +251,30 @@ df.eot_rel %>%
   labs(title="",x="Gene", y = "Fitness")+
   my_theme() + 
   theme(axis.title.x = element_blank()) +
-  ylim(c(-3,8))+
+  ylim(c(-3,12))+
   scale_fill_npg()+
+  geom_hline(yintercept=0, linetype="dashed")+
   theme(#legend.position = "none",
     axis.text.x = element_text(face="italic"),
     axis.title.y = element_text(face ="plain"),
-    plot.title = element_text(hjust=0,face ="plain")) ->p.growth
+    plot.title = element_text(hjust=0,face ="plain"))+
+  stat_compare_means(comparisons=my_comp,label="p.signif",vjust=0.001,label.y = c(9,10),tip.length=c(0.005,0.005))->p.fitness_violin
 
-png("output/figures/growth.png",width=6, height=4,units="in",res=500,type="cairo")
-p.growth
+png("output/figures/fitness_violin.png",width=6, height=6,units="in",res=500,type="cairo")
+p.fitness_violin
 dev.off()
 
-
+#### Serial samples by brca status (question: do dynamics unter PARP Inhb. differ depending on BRCA status?) #### UNFINISHED
+df.eot %>% 
+  filter(Patmut %in% Patmut.serial2)%>%
+  left_join(.,id.brca_germline,by = "Patient.ID")%>%
+  mutate(brca_germline=brca1_germline+brca2_germline)%>%
+  filter(Gene=="PPM1D"|Gene=="TP53")%>%
+  ggplot() + 
+  geom_point(aes(x=timepoint,y=TVAF,color=Gene,group=Patient.ID),size=1.5,na.rm=FALSE) + 
+  geom_line(aes(x=timepoint,y=TVAF,group=position,color=Gene),size=1*1,na.rm=FALSE) + 
+  facet_wrap(~ brca_germline, ncol=2, scales="free", dir="h") +
+  scale_y_continuous(limits = c(0,0.26)) +
+  labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
+  theme_minimal()-> p.serial_brca
 

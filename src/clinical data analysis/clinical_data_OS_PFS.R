@@ -34,14 +34,14 @@ source("src/global_functions_themes.R")
 
 ########## Load clinical data  ##########
 load("data/interim/clin.RData")
-df -> df.surv
+df.clin -> df.surv
 
 ########## Response assessment ######################
 my_vars_response=c("Response_best","response_binom","response_binom2")
 
 cat_vars_response=my_vars_response
 
-df %>% CreateTableOne(strata = "CH",
+df.clin %>% CreateTableOne(strata = "CH",
                       vars=c(my_vars_response),
                       factorVars = cat_vars_response,
                       includeNA=FALSE,
@@ -64,7 +64,7 @@ df.surv %>%
              data = ., 
              pval = TRUE,
              #conf.int = TRUE,
-             palette = viridis(3),
+             palette = pal_npg("nrc")(2),
              risk.table=TRUE,
              tables.height = 0.3,
              ylab = "Overall Survival",
@@ -95,7 +95,7 @@ df.surv %>%
              data = ., 
              pval = TRUE,
              #conf.int = TRUE,
-             palette = viridis(3),
+             palette = pal_npg("nrc")(2),
              risk.table=TRUE,
              tables.height = 0.3,
              ylab = "Progression-free Survival",
