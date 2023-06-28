@@ -34,23 +34,27 @@ load("data/interim/clin.RData")
 df.clin -> df
 ########   Create Table with baseline characteristics    ########
 #baseline variables
-my_vars_baseline=c("Arm",
-                   "BRCA1",
-                   "BRCA2",
+my_vars_baseline=c("Age_TreatmentStartEUDARIO",
+                   "Arm",
                    "ECOG",
-                   "LVEF_C1D1",
                    "TumorBurden_baseline",
+                   "LVEF_C1D1",
+                   "BRCA1",
+                   "brca1_germline",
+                   "BRCA2",
+                   "brca2_germline",
                    "Number_PreviousLines",
                    "Number_PreviousPlatinumLines",
                    "No_Platinum_lines_binom",
                    "Type_PreviousTherapy",
                    "PriorPARPi",
-                   "Duration_PriorPARPi",
-                   "Age_TreatmentStartEUDARIO")
+                   "Duration_PriorPARPi")
 
 cat_vars_baseline=c("Arm",
-                   "BRCA1",
-                   "BRCA2",
+                    "BRCA1",
+                    "brca1_germline",
+                    "BRCA2",
+                    "brca2_germline",
                    "ECOG",
                    "Type_PreviousTherapy",
                    "PriorPARPi",
@@ -72,6 +76,7 @@ df %>% CreateTableOne(strata = "CH",
         quote=FALSE) -> baseline.csv
 
 write.csv(baseline.csv, file = "output/tables/baseline_CH.csv")
+write.xlsx(baseline.csv, file = "output/tables/baseline.xlsx",sheetName = "baseline")
 
 
 ######### Plot age distribution #######################

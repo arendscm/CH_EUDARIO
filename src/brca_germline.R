@@ -19,11 +19,8 @@ library(stringr)
 library(xlsx)
 
 ########   set working directory #####
-#setwd('H:/Meine Ablage')
-#setwd("C:/Users/maxar/Documents/AG Damm/EUDARIO/data_analysis/EUDARIO")
 
 ########  Load preprocessed sequencing data
-#df <- read.csv('data/interim/mutationcalls.csv')
 load('data/interim/seqdata.RData')
 
 ######## Get Patient ids
@@ -54,7 +51,7 @@ df %>%
 ##create list of all patients incl BRCA stauts
 ids %>% 
   filter(Material=="wb") %>%
-  filter(Visite == "C1D1") %>% 
+  filter(firstTimepoint_wb == 1)%>%
   mutate(brca1_germline = ifelse(is.element(Patient.ID,(df.brca_germline%>%filter(Gene=="BRCA1"))$Patient.ID),1,0))%>%
   mutate(brca2_germline = ifelse(is.element(Patient.ID,(df.brca_germline%>%filter(Gene=="BRCA2"))$Patient.ID),1,0))%>%
   dplyr::select(Patient.ID,brca1_germline,brca2_germline) %>% 

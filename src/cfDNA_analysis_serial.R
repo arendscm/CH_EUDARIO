@@ -42,15 +42,22 @@ source("src/createMAF.R")
 source("src/global_functions_themes.R")
 
 ##samples failed in sequencing
-failedSamples <-c('OvCA_44_C1D1_cf','OvCA_45_C1D1_cf','OvCA_46_C1D1_cf','OvCA_48_C1D1_cf','OvCA_50_C1D1_cf','OvCA_54_C1D1_cf','OvCA_93_C1D1_cf',
-                  'OvCA_11_C1D1_cf','OvCA_40_C1D1_cf','OvCA_53_C1D1_cf','OvCA_65_C1D1_cf')
+#failedSamples <-c('OvCA_44_C1D1_cf','OvCA_45_C1D1_cf','OvCA_46_C1D1_cf','OvCA_48_C1D1_cf','OvCA_50_C1D1_cf','OvCA_54_C1D1_cf','OvCA_93_C1D1_cf',
+#                  'OvCA_11_C1D1_cf','OvCA_40_C1D1_cf','OvCA_53_C1D1_cf','OvCA_65_C1D1_cf')
 
 ##relevant variables
 variables <- c("Patient.ID","Sample_orig","mutID","position","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "GeneDetail", "ExonicFunc", "AAChange", "cytoBand","readDepth", "TR1", "TR1_plus", "TR1_minus", "TR2", "TR2_plus", "TR2_minus", "TVAF", "AF", "avsnp150","cosmic92_coding","snp","mutFreq","p.binom","n.mut","n.material","sum_cf","sum_wb","Material","tag", "Patmut")
 
 
 #####  serial analysis: cf data exploration 2 timepoints cf only ####
+#patients with tag true or cf-only
+df %>% filter(tag=="true"|tag=="cf-only") %>% 
+  filter(is.na(replicate))%>%
+  filter(Material=="cf")%>%
+  filter(c1d1_cf==1&eot_cf==1)%>% .$Patmut -> Patmut_tagged
+
 df %>% 
+  filter(is.na(replicate))%>%
   filter(Material=="cf")%>%
   filter(c1d1_cf==1&eot_cf==1)%>%  
   #filter(c1d1_cf==1&eot_cf==1 & c7d1_cf == 0)%>% #for subsetting patients with 2 or 3 timepoints
@@ -64,18 +71,20 @@ df %>%
          maxTR2 = max(TR2),
          minpbinom = min(p.binom)) %>%
   data.frame()%>%
+
+  filter(maxVAF > 0.008,
+         maxTR2 > 9,
+         minpbinom < -Inf) %>% .$Patmut -> Patmut_serial_cf
+
+df %>% filter(Patmut %in% Patmut_serial_cf|Patmut %in% Patmut_tagged)%>%
   mutate(gene = ifelse(is.element(Gene,ch_genes_without_HRD),"CH",
                        ifelse(is.element(Gene,tp53_genes),"TP53",
                               ifelse(is.element(Gene,hrd_genes),"HRD",
                                      ifelse(is.element(Gene,brca_genes),"BRCA","other")))))%>%
-  filter(maxVAF > 0.005,
-         maxTR2 > 7,
-         minpbinom < -8) %>%
-  #filter(TVAF < 0.38) %>%
   ggplot() + 
   geom_point(aes(x=Visite,y=TVAF,color=gene,group=Patient.ID),size=1,na.rm=FALSE) + 
   geom_line(aes(x=Visite,y=TVAF,group=position,color=gene),size=0.5,na.rm=FALSE) + 
-  facet_wrap(~ Patient.ID, ncol=8, scales="free", dir="h") +
+  facet_wrap(~ Patient.ID, ncol=12, scales="free", dir="h") +
   scale_y_continuous(limits = c(0,0.26)) +
   labs(x="Time in days",y="Variant allele frequency",colour="Mutated Gene") +
   theme_minimal()-> p.cf.serial
@@ -95,7 +104,7 @@ df %>%
   filter(c1d1_wb==1&eot_wb==1)%>%
   filter(Material=="cf")%>%
   group_by(Visite)%>%
-  mutate(wb=is.element(mutID,wb.mutID))->cf.cfID
+  mutate(wb=is.element(mutID,wb.cfID))->cf.cfID
 
 #####  serial analysis: cf data exploration 2 timepoints cf and wb - wb=full line ; plasma=dashed ####
 df %>% 

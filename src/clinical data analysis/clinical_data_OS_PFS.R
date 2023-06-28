@@ -27,14 +27,14 @@ library(forestmodel)
 library(finalfit)
 library(ggplot2)
 library(survminer)
-library(viridis)
+library(ggsci)
 
 ########   Load theme    ########
 source("src/global_functions_themes.R")
 
 ########## Load clinical data  ##########
 load("data/interim/clin.RData")
-df.clin -> df.surv
+df.clin %>% mutate(brca_germline=brca1_germline+brca2_germline) -> df.surv
 
 ########## Response assessment ######################
 my_vars_response=c("Response_best","response_binom","response_binom2")
@@ -80,10 +80,14 @@ p.os
 dev.off()
 
 ##analyse impact of covariates
-covariates = c("Age_TreatmentStartEUDARIO","ECOG_binom","PriorPARPi","No_Platinum_lines_binom","TumorBurden_baseline","brca1_germline","brca2_germline","CH")
+covariates = c("Age_TreatmentStartEUDARIO","ECOG_binom","PriorPARPi","No_Platinum_lines_binom","TumorBurden_baseline","brca_germline","CH")
 
 finalfit(df.surv, dependent="Surv(OS_days,OS_event)",explanatory=covariates)
 
+fit.coxph <- coxph(Surv(time = df.surv$OS_days, event = df.surv$OS_event) ~ CH + Age_TreatmentStartEUDARIO+ ECOG_binom + PriorPARPi + Number_PreviousLines + TumorBurden_baseline+ factor(brca_germline), 
+                   data = df.surv)
+summary(fit.coxph)
+forest_model(fit.coxph)
 
 ######## Crude PFS analysis #################
 
@@ -117,3 +121,9 @@ finalfit(df.surv, dependent="Surv(PFS_days,PFS_event)",explanatory=covariates)
 #set of covariates that are predictive at p<0.1
 covariates_01 = c("ECOG_binom","PriorPARPi","TumorBurden_baseline","CH")
 finalfit(df.surv, dependent="Surv(PFS_days,PFS_event)",explanatory=covariates_01)
+
+
+fit.coxph <- coxph(Surv(time = df.surv$PFS_days, event = df.surv$PFS_event) ~ CH + Age_TreatmentStartEUDARIO+ ECOG_binom + PriorPARPi + Number_PreviousLines + TumorBurden_baseline+ factor(brca_germline), 
+                   data = df.surv)
+summary(fit.coxph)
+forest_model(fit.coxph)

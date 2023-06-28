@@ -114,13 +114,7 @@ dev.off()
 
 #####determinants of ch
 
-my_vars_baseline=c("Arm",
-                   "BRCA1",
-                   "BRCA2",
-                   "ECOG",
-                   "LVEF_C1D1",
-                   "TumorBurden_baseline",
-                   "Number_PreviousLines",
+my_vars_baseline=c("Number_PreviousLines",
                    "Number_PreviousPlatinumLines",
                    "No_Platinum_lines_binom",
                    "Type_PreviousTherapy",
@@ -128,11 +122,7 @@ my_vars_baseline=c("Arm",
                    "Duration_PriorPARPi",
                    "Age_TreatmentStartEUDARIO")
 
-cat_vars_baseline=c("Arm",
-                    "BRCA1",
-                    "BRCA2",
-                    "ECOG",
-                    "Type_PreviousTherapy",
+cat_vars_baseline=c("Type_PreviousTherapy",
                     "PriorPARPi",
                     "No_Platinum_lines_binom")
 
@@ -154,7 +144,7 @@ df.clin %>% CreateTableOne(strata = "CH",
 
 ####### logistic regression ########################
 
-log.reg <- glm(CH ~ Age_TreatmentStartEUDARIO + PriorPARPi + Number_PreviousPlatinumLines, family="binomial",data=df.clin)
+log.reg <- glm(CH ~ Age_TreatmentStartEUDARIO  +PriorPARPi + No_Platinum_lines_binom, family="binomial",data=df.clin)
 summary(log.reg)
 
 

@@ -105,16 +105,17 @@ df.filtered.c1d1 %>%
 names(prev.table)<- c( "Gene","Freq","prev")
 
 prev.table  %>%
-  mutate(DDR = ifelse(is.element(Gene,ddr_genes),"DDR","non-DDR"))%>%
-  ggplot(aes(x=reorder(Gene, Freq), y=prev, fill=DDR)) +
+  mutate(HRD = ifelse(is.element(Gene,hrd_genes),"HRD","non-HRD"))%>%
+  ggplot(aes(x=reorder(Gene, Freq), y=prev, fill=HRD)) +
   geom_bar(stat="identity", width=0.6)+
   geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
   xlab("")+
-  scale_y_continuous(labels = percent,limits=c(0,0.35), position = "right")+
+  scale_y_continuous(labels = percent,limits=c(0,0.3), position = "right")+
   ylab("Gene Mutation Prevalence [%]") +
   my_theme() +
   theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35,face="italic")) +
   coord_flip() + 
+  theme(legend.position = c(0.7, 0.3))+
   scale_fill_npg() -> p.mutprev
 p.mutprev
 

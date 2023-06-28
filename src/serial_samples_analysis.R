@@ -89,7 +89,8 @@ df.eot %>%
   data.frame()%>%
   filter(maxVAF > 0.008) %>%
   filter(minVAF < 0.4)%>%
-  filter(minp.binom ==-Inf) %>% 
+  filter(minp.binom ==-Inf) %>%
+  filter(Patient.ID != "4221006")%>% ##very short FU time
   .$Patmut ->Patmut.serial2  #some "partners" get kicked out here, rescue them back
 
 df.eot%>%
@@ -112,7 +113,7 @@ dev.off()
 ##same plot with CH genes only
 
 df.eot%>%
-  filter(Gene %in% ch_genes)%>%
+  filter(Gene %in% ch_genes[1:16])%>%
   filter(Patmut %in% Patmut.serial2)%>%
   ggplot() + 
   geom_point(aes(x=timepoint,y=TVAF,color=Gene,group=Patient.ID),size=1,na.rm=FALSE) + 
@@ -182,17 +183,23 @@ dev.off()
 
 ####   plot rel vaf2 as points according to gene, coloured in ExonicFunc (frameshift,...) ####
 df.eot_rel %>% 
+  mutate(timepoint = ifelse(variable=="relvaf1",0,timepoint))%>%
+  mutate(Patmut = paste(Patient.ID,position,sep="_"))%>%
+  mutate(fitness_binom = ifelse(fitness>0.2,"increasing",
+                                ifelse(fitness < -0.2,"decreasing","stable")))%>%
   filter(is.element(Gene,c("CHEK2","PPM1D","DNMT3A","TP53","TET2", "ATM")))%>%
-  filter(variable == "relvaf2") %>% 
-  ggplot(aes(x = reorder(Gene, value, FUN = median), y = value, color = ExonicFunc, group = Patient.ID)) +
+  ggplot(aes(x = timepoint, y = value, color = fitness_binom, group = Patmut)) +
   geom_point(size = 1.5, na.rm = FALSE) + 
+  geom_line()+
   scale_y_log10() +
-  labs(x = "Gene", y = "log(VAF change)", colour = "Mutated Gene") +
-  theme_graphicalabstract() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))-> p.growth
+  scale_color_manual(values=c("#4DBBD5FF","#E64B35FF","#00A087FF"))+
+  labs(x = "Time in days", y = "log(VAF change)", color = "Fitness") +
+  my_theme() +
+  facet_wrap(~Gene)-> p.growth
+p.growth
 
-png("output/figures/p.relvaf_ExonicFunc.png",width=6, height=4,units="in",res=500,type="cairo")
-p.serial
+png("output/figures/relgrowth_wb_gene.png",width=8, height=5,units="in",res=500,type="cairo")
+p.growth
 dev.off()
 
 ####   Boxplot Fitness index according to DDR/non DDR ####

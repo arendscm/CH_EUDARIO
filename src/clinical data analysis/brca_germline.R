@@ -117,7 +117,7 @@ df.clin %>% CreateTableOne(strata = "DDR",
 
 ####### logistic regression ########################
 
-log.reg <- glm(CH ~ Age_TreatmentStartEUDARIO + PriorPARPi + Number_PreviousLines + BRCA_germline, family="binomial",data=df.clin)
+log.reg <- glm(DDR ~ Age_TreatmentStartEUDARIO + PriorPARPi + No_Platinum_lines_binom + BRCA_germline, family="binomial",data=df.clin)
 summary(log.reg)
 
 
