@@ -22,6 +22,7 @@ library(ggthemes)
 library(viridis)
 library(ggpubr)
 library(g3viz)
+library(ggsci)
 
 #####  Data preparation ####
 ########  Load preprocessed sequencing data
@@ -37,49 +38,69 @@ source("src/material_table.R")
 source("src/createMAF.R")
 source("src/global_functions_themes.R")
 
-##samples failed in sequencing
-failedSamples <-c('OvCA_44_C1D1_cf','OvCA_45_C1D1_cf','OvCA_46_C1D1_cf','OvCA_48_C1D1_cf','OvCA_50_C1D1_cf','OvCA_54_C1D1_cf','OvCA_93_C1D1_cf',
-                  'OvCA_11_C1D1_cf','OvCA_40_C1D1_cf','OvCA_53_C1D1_cf','OvCA_65_C1D1_cf')
-
-##relevant variables
-variables <- c("Patient.ID","Sample_orig","mutID","position","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "GeneDetail", "ExonicFunc", "AAChange", "cytoBand","readDepth", "TR1", "TR1_plus", "TR1_minus", "TR2", "TR2_plus", "TR2_minus", "TVAF", "AF", "avsnp150","cosmic92_coding","snp","mutFreq","p.binom","n.mut","n.material","sum_cf","sum_wb","Material","tag", "Patmut")
 
 ##interesting gene groups
 source("src/genegroup_definitions.R")
-Categories<-c('CH','HRD','other','TP53')
 
-#dataframe with mutation calls from cfDNA             
+
+##df preparation
+df %>% mutate(gene_group =  ifelse(is.element(Gene,tp53_genes),"TP53",
+                                   ifelse(is.element(Gene,ppm1d_genes),"PPM1D",
+                                          ifelse(is.element(Gene,hrd_genes),"HRD",
+                                                 ifelse(is.element(Gene,ch_genes_without_HRD),"CH","other"))))) %>%
+  mutate(frac_mut = mutFreq/n.lane) -> df
+
+##relevant variables
+variables <- c("Patient.ID","Sample_orig","mutID","position","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "GeneDetail", "ExonicFunc", "AAChange", "cytoBand","readDepth", "TR1", "TR1_plus", "TR1_minus", "TR2", "TR2_plus", "TR2_minus", "TVAF", "AF", "avsnp150","cosmic92_coding","snp","mutFreq","p.binom","n.mut","n.material","sum_cf","sum_wb","Material","tag", "Patmut","gene_group","frac_mut")
+
+
+#dataframe with all mutation calls from cfDNA at c1d1          
 df %>% 
+  filter(is.na(replicate))%>%
+  filter(Patient.ID %in% (df.material %>% filter(c1d1_cf==1&c1d1_wb==1) %>% .$Patient.ID))%>%
   filter(Material=="cf") %>% 
   filter(Visite == "C1D1")%>%
-  filter(is.na(replicate))%>%
-  filter(!is.element(Sample.ID, failedSamples))%>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_"))-> df.cf
+
+#data frame with all mutation calls from WB samples that have matched cfDNA samples
 df %>% 
+  filter(is.na(replicate))%>%
+  filter(Patient.ID %in% (df.material %>% filter(c1d1_cf==1&c1d1_wb==1) %>% .$Patient.ID))%>%
   filter(Material=="wb") %>% 
   filter(Visite == "C1D1")%>%
-  filter(is.na(replicate))%>%
-  filter(!is.element(Sample.ID, failedSamples))%>%
-  dplyr::select(all_of(variables)) %>%
-  mutate(cfID=paste(Patient.ID,position,sep="_"))-> df.wb
-
-#anti_join(df.cf, df.wb, by= "cfID")->df.cf_only
-#save(df.cf_only,file="data/interim/df.cf_only.RDATA")
-
-#data frame with mutation calls from WB samples that have matched cfDNA samples
-df %>% 
-  filter(is.element(Patient.ID,df.cf$Patient.ID)) %>% 
-  filter(is.na(replicate))%>%
-  filter(Material=="wb") %>% 
-  filter(Visite == "C1D1")%>%
-  filter(!is.element(Sample.ID, failedSamples))%>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_")) -> df.cf_wb
 
+#Mutations to work with
+df.cf %>% 
+  filter(ExonicFunc != "synonymous SNV") %>%
+  filter(Func == "exonic"|Func == "splicing"|Func == "exonic;splicing") %>%
+  filter(AF<0.01)%>%
+  filter(snp==FALSE)%>%
+  filter(tag!="germline")%>%
+  filter(tag!="false")%>%
+  filter(TVAF >= 0.008)%>%
+  filter(p.binom < -12)%>%
+  filter(frac_mut < 0.2)%>%
+  full_join(.,df.cf %>% filter(tag == "true"|tag=="cf-only")) %>% .$Patmut -> Patmut_cf
+
+df.cf_wb %>% 
+  filter(ExonicFunc != "synonymous SNV") %>%
+  filter(Func == "exonic"|Func == "splicing"|Func == "exonic;splicing") %>%
+  filter(AF<0.01)%>%
+  filter(snp==FALSE)%>%
+  filter(tag!="germline")%>%
+  filter(tag!="false")%>%
+  filter(TVAF >= 0.008)%>%
+  filter(p.binom < -12)%>%
+  filter(frac_mut < 0.2)%>%
+  full_join(.,df.cf_wb %>% filter(tag == "true")) %>% .$Patmut -> Patmut_wb
+
+Patmut_all <- c(Patmut_cf,Patmut_wb)%>% unique
+
 #####  Identity check via SNP  ####
 left_join(df.cf,df.cf_wb,by="cfID")%>%
-  filter(Patient.ID.x %in% c("4202011","4202020","4202005","4202006"))%>%
   filter(snp.x == 1) %>% 
   ggplot(aes(x=Patient.ID.x,y=TVAF.x-TVAF.y)) +
   geom_point()+
@@ -92,27 +113,13 @@ png("output/figures/p.cf.snp.png",width=5, height=7,units="in",res=500,type="cai
 p.cf.snp
 dev.off()
 
-#####  Correlation Plot WB vs cfDNA all calls, only calls that are present in WB ####
-full_join(df.cf,df.cf_wb,by="cfID") %>% 
-  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x))%>%
-  filter(TVAF.y < 0.4&TVAF.x<0.4)%>%
-  filter(!snp.y&!snp.x)%>%
-  ggscatter(., 
-            x = "TVAF.x", 
-            y = "TVAF.y", 
-            add = "reg.line", 
-            #conf.int = TRUE, 
-            cor.coef = TRUE, 
-            cor.method = "pearson",
-            size=1,
-            ylab = "whole-blood VAF", 
-            xlab = "cfDNA VAF")->p.cfDNACor
-p.cfDNACor
 
 #####  Correlation Plot WB vs cfDNA calls tagged true, only calls that are present in WB ####
-full_join(df.cf,df.cf_wb,by="cfID") %>% 
-  filter(tag.y == "true")%>%
-  filter(TVAF.y > 0.01)%>%
+df.cf_wb %>%   
+  filter(tag == "true")%>%
+  filter(TVAF >= 0.01)%>%
+  left_join(.,df.cf,by="cfID") %>% 
+  mutate(TVAF.y = ifelse(is.na(TVAF.y),0.001,TVAF.y))%>%
   ggscatter(., 
             y = "TVAF.x", 
             x = "TVAF.y", 
@@ -133,26 +140,18 @@ dev.off()
 
 
 #####  Plot that shows VAF WB vs VAF ctDNA including color for group of mutation - NO Filter####
-full_join(df.cf,df.cf_wb,by="cfID") %>% 
-  #filter(!is.element(Sample.x,mismatch))%>%
-  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
-  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
-  mutate(gene = ifelse(is.element(Gene.x,ch_genes_without_HRD),"CH",
-                       ifelse(is.element(Gene.x,tp53_genes),"TP53",
-                              ifelse(is.element(Gene.x,hrd_genes),"HRD",
-                                     ifelse(is.element(Gene.x,brca_genes),"BRCA",
-                                            ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
-  #filter(gene != "other") %>%
-  mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
-  #filter(p.binom.x <= -10) %>%
-  #filter(Func.x == "exonic"|Func.x == "splicing"|Func.x == "exonic;splicing") %>%
-  #filter(ExonicFunc.x != "synonymous SNV")%>%
-  #filter(AF.x<0.1)%>%
-  #filter(snp.x==FALSE)%>%
-  #filter(TVAF.x>0.005|TVAF.y>0.005)%>%
-  #filter(TR2.y > 19|TR2.x>19)%>%
+full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in% Patmut_all),by="cfID") %>% 
+  mutate(TVAF.y = ifelse(is.na(TVAF.y),0.001,TVAF.y))%>%
+  mutate(TVAF.x = ifelse(is.na(TVAF.x),0.001,TVAF.x))%>%
+  filter(TR2.x>9|TR2.y>9)%>%
+  mutate(tag = ifelse(is.na(tag.x),
+                      ifelse(is.na(tag.y),
+                             "not tagged",
+                             as.character(tag.y)),
+                      as.character(tag.x)))%>%
+  mutate(gene_group = ifelse(is.na(gene_group.x),gene_group.y,gene_group.x))%>%
   ggplot(aes(x=TVAF.x,y=TVAF.y,
-             color=gene,
+             color=gene_group,
              #shape=ExonicFunc.x
              )) +
   geom_point(size=2)+
@@ -160,120 +159,38 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
   geom_abline(slope=1/3,size=1,linetype=3,alpha=0.5,intercept=-2)+
   scale_y_log10()+
   scale_x_log10()+
-  #facet_wrap(~ Patient.ID.x, ncol=4, dir="h")+
-  scale_color_viridis(discrete=TRUE)+
+  scale_color_npg()+
   ylab("whole blood VAF")+
   xlab("cfDNA VAF")+
   theme_minimal()->p.cf.corr
+p.cf.corr
 
 png("output/figures/p.cf.corr.all.png",width=10, height=6,units="in",res=500,type="cairo")
 p.cf.corr
 dev.off()
 
-#####  Plot that shows VAF WB vs VAF ctDNA including color for group of mutation - Filter 1 ####
-full_join(df.cf,df.cf_wb,by="cfID") %>% 
-  filter(!is.element(Sample.x,failedSamples))%>%
-  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
-  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
-  mutate(gene = ifelse(is.element(Gene.x,ch_genes_without_HRD),"CH",
-                       ifelse(is.element(Gene.x,tp53_genes),"TP53",
-                              ifelse(is.element(Gene.x,hrd_genes),"HRD",
-                                     ifelse(is.element(Gene.x,brca_genes),"BRCA",
-                                            ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
-  #filter(gene != "other") %>%
-  mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
-  filter(p.binom.x <= -10) %>%
-  filter(Func.x == "exonic"|Func.x == "splicing"|Func.x == "exonic;splicing") %>%
-  filter(ExonicFunc.x != "synonymous SNV")%>%
-  filter(AF.x<0.1)%>%
-  filter(snp.x==FALSE)%>%
-  filter(TVAF.x>0.01|TVAF.y>0.01)%>%
-  filter(TR2.y > 19|TR2.x>19)%>%
-  ggplot(aes(x=TVAF.x,y=TVAF.y,
-             color=tag.x,
-             #shape=ExonicFunc.x
-  )) +
-  geom_point(size=2)+
-  geom_abline(slope=1,size=1,linetype=2,alpha=0.5)+
-  geom_abline(slope=1/3,size=1,linetype=3,alpha=0.5,intercept=-2)+
-  scale_y_log10()+
-  scale_x_log10()+
-  #facet_wrap(~ Patient.ID.x, ncol=4, dir="h")+
-  scale_color_viridis(discrete=TRUE)+
-  ylab("whole-blood VAF")+
-  xlab("cfDNA VAF")+
-  theme_minimal()->p.cf.corr
-p.cf.corr
-
-png("output/figures/p.cf.corr.filter1.png",width=10, height=6,units="in",res=500,type="cairo")
-p.cf.corr
-dev.off()
-
-##### Correlation plot Filter 1 - TP53 mutations only 
-full_join(df.cf,df.cf_wb,by="cfID") %>% 
-  filter(!is.element(Sample.x,failedSamples))%>%
-  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
-  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
-  mutate(gene = ifelse(is.element(Gene.x,ch_genes_without_HRD),"CH",
-                       ifelse(is.element(Gene.x,tp53_genes),"TP53",
-                              ifelse(is.element(Gene.x,hrd_genes),"HRD",
-                                     ifelse(is.element(Gene.x,brca_genes),"BRCA",
-                                            ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
-  mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
-  filter(p.binom.x == -Inf|p.binom.y == -Inf) %>%
-  filter(Func.x == "exonic"|Func.x == "splicing"|Func.x == "exonic;splicing") %>%
-  filter(ExonicFunc.x != "synonymous SNV")%>%
-  filter(AF.x<0.1)%>%
-  #filter(snp.x==FALSE)%>%
-  filter(TR2.x>19|TR2.y>19) %>% 
-  filter(TVAF.x>0.001|TVAF.y>0.001)%>%
-  filter(Gene.x=="TP53")%>%
-  #filter(cosmic_ovary)%>%
-  ggplot(aes(x=TVAF.x,y=TVAF.y,color=cosmic_ovary))+
-  geom_point(size=2)+
-  geom_abline(slope=1)+
-  scale_color_viridis(discrete=TRUE)+
-  scale_x_log10(limits=c(0.0005,0.5)) +
-  scale_y_log10(limits=c(0.0005,0.5)) +
-  theme_minimal() -> p.TP53_cosmic_cf_wb
-p.TP53_cosmic_cf_wb
-
-png("output/figures/p.TP53_cosmic_cf_wb.png",width=10, height=6,units="in",res=500,type="cairo")
-p.TP53_cosmic_cf_wb
-dev.off()
-
-
 #####  Max: Mutationspectrum for mutations in WB and cf only mutations by group------------------
-full_join(df.cf,df.cf_wb,by="cfID") %>% 
-  filter(!is.element(Sample.x,failedSamples))%>%
-  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
-  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
-  mutate(gene = ifelse(is.element(Gene.x,ch_genes_without_HRD),"CH",
-                       ifelse(is.element(Gene.x,tp53_genes),"TP53",
-                              ifelse(is.element(Gene.x,hrd_genes),"HRD",
-                                     ifelse(is.element(Gene.x,brca_genes),"BRCA",
-                                            ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
-  #filter(gene != "other") %>%
-  mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
-  filter(p.binom.x <= -Inf) %>%
-  filter(Func.x == "exonic"|Func.x == "splicing"|Func.x == "exonic;splicing") %>%
-  filter(ExonicFunc.x != "synonymous SNV")%>%
-  filter(AF.x<0.1)%>%
-  filter(snp.x==FALSE)%>%
-  filter(TVAF.x>0.01|TVAF.y>0.01)%>%
-  filter(TR2.y > 19|TR2.x>19)%>%
-  filter(TVAF.x<0.35&TVAF.y<0.35)%>% #no germline variants
-  filter(tag.x != "false"|tag.x != "germline")%>%
+full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in% Patmut_all),by="cfID") %>% 
+  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y))%>%
+  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x))%>%
+  filter(TR2.x>9|TR2.y>9)%>%
+  mutate(tag = ifelse(is.na(tag.x),
+                      ifelse(is.na(tag.y),
+                             "not tagged",
+                             as.character(tag.y)),
+                      as.character(tag.x)))%>%
+  mutate(gene_group = ifelse(is.na(gene_group.x),gene_group.y,gene_group.x))%>%
   mutate(compartment = ifelse(TVAF.x > TVAF.y*5,"cf","wb"))%>%
-  dplyr::select(gene, compartment) %>% 
+  dplyr::select(gene_group, compartment) %>% 
   table %>% 
   data.frame %>%
-  ggplot(aes(x=reorder(gene, Freq), y=Freq, fill=compartment)) +
+  ggplot(aes(x=reorder(gene_group, Freq), y=Freq, fill=compartment)) +
   geom_bar(stat="identity", width=0.6, position = "stack")+
   #geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
   xlab("")+
   scale_y_continuous(position = "right")+
   ylab("Gene Mutation Frequency") +
+  scale_fill_npg()+
   my_theme() +
   theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35),
         axis.ticks.y = element_blank())+
@@ -281,35 +198,28 @@ full_join(df.cf,df.cf_wb,by="cfID") %>%
 p.mutprev
 
 ### Mutationspectrum cf vs wb by gene 
-full_join(df.cf,df.cf_wb,by="cfID") %>% 
-  filter(!is.element(Sample.x,failedSamples))%>%
-  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
-  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
-  mutate(gene = ifelse(is.element(Gene.x,ch_genes_without_HRD),"CH",
-                       ifelse(is.element(Gene.x,tp53_genes),"TP53",
-                              ifelse(is.element(Gene.x,hrd_genes),"HRD",
-                                     ifelse(is.element(Gene.x,brca_genes),"BRCA",
-                                            ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
-  mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
-  filter(p.binom.x <= -Inf) %>%
-  filter(Func.x == "exonic"|Func.x == "splicing"|Func.x == "exonic;splicing") %>%
-  filter(ExonicFunc.x != "synonymous SNV")%>%
-  filter(AF.x<0.1)%>%
-  filter(snp.x==FALSE)%>%
-  filter(TVAF.x>0.01|TVAF.y>0.01)%>%
-  filter(TR2.y > 19|TR2.x>19)%>%
-  filter(TVAF.x<0.35&TVAF.y<0.35)%>% #no germline variants
-  filter(tag.x != "false"|tag.x != "germline")%>%
+full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in% Patmut_all),by="cfID") %>% 
+  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y))%>%
+  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x))%>%
+  filter(TR2.x>9|TR2.y>9)%>%
+  mutate(tag = ifelse(is.na(tag.x),
+                      ifelse(is.na(tag.y),
+                             "not tagged",
+                             as.character(tag.y)),
+                      as.character(tag.x)))%>%
+  mutate(gene_group = ifelse(is.na(gene_group.x),gene_group.y,gene_group.x))%>%
+  mutate(Gene = ifelse(is.na(Gene.x),Gene.y,Gene.x))%>%
   mutate(compartment = ifelse(TVAF.x > TVAF.y*5,"cf","wb"))%>%
-  dplyr::select(Gene.x, compartment) %>% 
+  dplyr::select(Gene, compartment) %>% 
   table %>% 
-  data.frame %>%
-  ggplot(aes(x=reorder(Gene.x, Freq), y=Freq, fill=compartment)) +
+  data.frame  %>%
+  ggplot(aes(x=reorder(Gene, Freq), y=Freq, fill=compartment)) +
   geom_bar(stat="identity", width=0.6, position = "stack")+
   #geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
   xlab("")+
   scale_y_continuous(position = "right")+
   ylab("Gene Mutation Frequency") +
+  scale_fill_npg()+
   my_theme() +
   theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35),
         axis.ticks.y = element_blank())+
@@ -318,27 +228,20 @@ p.mutprev
 
 
 ##Lolliplots for TP53 mutations
-
-full_join(df.cf,df.cf_wb,by="cfID") %>% 
-  filter(!is.element(Sample.x,failedSamples))%>%
-  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
-  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
-  mutate(gene = ifelse(is.element(Gene.x,ch_genes_without_HRD),"CH",
-                       ifelse(is.element(Gene.x,tp53_genes),"TP53",
-                              ifelse(is.element(Gene.x,hrd_genes),"HRD",
-                                     ifelse(is.element(Gene.x,brca_genes),"BRCA",
-                                            ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
-  mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
-  filter(p.binom.x == -Inf|p.binom.y == -Inf) %>%
-  filter(Func.x == "exonic"|Func.x == "splicing"|Func.x == "exonic;splicing") %>%
-  filter(ExonicFunc.x != "synonymous SNV")%>%
-  filter(AF.x<0.1)%>%
-  #filter(snp.x==FALSE)%>%
-  filter(TR2.x>19|TR2.y>19) %>% 
-  filter(TVAF.x>0.001|TVAF.y>0.001)%>%
-  filter(Gene.x=="TP53")%>%
-  mutate(Gene=Gene.x,
-         AAChange = AAChange.x,
+full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in% Patmut_all),by="cfID") %>% 
+  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y))%>%
+  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x))%>%
+  filter(TR2.x>9|TR2.y>9)%>%
+  mutate(tag = ifelse(is.na(tag.x),
+                      ifelse(is.na(tag.y),
+                             "not tagged",
+                             as.character(tag.y)),
+                      as.character(tag.x)))%>%
+  mutate(gene_group = ifelse(is.na(gene_group.x),gene_group.y,gene_group.x))%>%
+  mutate(Gene = ifelse(is.na(Gene.x),Gene.y,Gene.x))%>%
+  mutate(compartment = ifelse(TVAF.x > TVAF.y*5,"cf","wb"))%>%
+  filter(Gene=="TP53")%>%
+  mutate(AAChange = AAChange.x,
          Sample = Patient.ID.x,
          ExonicFunc=ExonicFunc.x,
          Chr=Chr.x,
@@ -467,33 +370,6 @@ for (x in Categories)
 }
 
 
-#####  detecting BRCA mutations in cfDNA (this will later on also be important when looking for BRCA reversion mutations)####
-full_join(df.cf,df.cf_wb,by="cfID") %>% 
-  #filter(!is.element(Sample.x,mismatch))%>%
-  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y)) %>% 
-  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x)) %>%
-  mutate(gene = ifelse(is.element(Gene.x,ch_genes),"CH",
-                       ifelse(is.element(Gene.x,tp53_genes),"TP53",
-                              ifelse(is.element(Gene.x,hrd_genes),"HRD",
-                                     ifelse(is.element(Gene.x,brca_genes),"BRCA",
-                                            ifelse(is.element(Gene.x,ppm1d_genes),"PPM1D","other"))))))%>%
-  filter(gene != "other") %>%
-  mutate(cosmic_ovary = str_detect(cosmic92_coding.x,"ovary")) %>%
-  filter(p.binom.x < -10) %>%
-  filter(Func.x == "exonic"|Func.x == "splicing"|Func.x == "exonic;splicing") %>%
-  filter(ExonicFunc.x != "synonymous SNV")%>%
-  filter(AF.x<0.1)%>%
-  #filter(snp.x==FALSE)%>%
-  filter(TR2.x>9|TR2.y>9) %>% 
-  filter(TVAF.x>0.005|TVAF.y>0.005)%>%
-  filter(gene=="BRCA")%>%
-  ggplot(aes(x=TVAF.x,y=TVAF.y,color=gene))+
-  geom_point(size=4)+
-  geom_abline(slope=1)+
-  scale_color_viridis(discrete=TRUE)+
-  scale_x_log10(limits=c(0.0005,0.5)) +
-  scale_y_log10(limits=c(0.0005,0.5)) +
-  theme_minimal()
 
 #####  Klara: Determine Overlap CH and HRD in plasma samples ####
 df.filtered%>%

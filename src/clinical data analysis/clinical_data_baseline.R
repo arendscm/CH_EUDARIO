@@ -31,7 +31,7 @@ source("src/global_functions_themes.R")
 
 ########## Load clinical data  ##########
 load("data/interim/clin.RData")
-df.clin -> df
+
 ########   Create Table with baseline characteristics    ########
 #baseline variables
 my_vars_baseline=c("Age_TreatmentStartEUDARIO",
@@ -48,7 +48,11 @@ my_vars_baseline=c("Age_TreatmentStartEUDARIO",
                    "No_Platinum_lines_binom",
                    "Type_PreviousTherapy",
                    "PriorPARPi",
-                   "Duration_PriorPARPi")
+                   "Duration_PriorPARPi",
+                   "thr",
+                   "hemoglobin",
+                   "wbc",
+                   "CA125")
 
 cat_vars_baseline=c("Arm",
                     "BRCA1",
@@ -62,7 +66,7 @@ cat_vars_baseline=c("Arm",
 
 cont_vars_baseline = setdiff(my_vars_baseline,cat_vars_baseline)
 
-df %>% CreateTableOne(strata = "CH",
+df.clin %>% CreateTableOne(strata = "CH",
                       vars=c(my_vars_baseline),
                       factorVars = cat_vars_baseline,
                       includeNA=FALSE,
@@ -80,15 +84,14 @@ write.xlsx(baseline.csv, file = "output/tables/baseline.xlsx",sheetName = "basel
 
 
 ######### Plot age distribution #######################
-df %>% mutate(nom = ifelse(nom==0,"0",ifelse(nom==1,"1",">1")))%>%
+df.clin %>% mutate(nom = ifelse(nom==0,"0",ifelse(nom==1,"1",">1")))%>%
   mutate(nom = factor(nom,levels=c("0","1",">1")))%>%
   ggplot(aes(x = Age_TreatmentStartEUDARIO)) + 
-  geom_histogram(aes(y=..count..,fill=as.factor(nom)),size=1,position="stack",binwidth=10)  +
-  scale_fill_npg(breaks=c("0","1",">1"),name="No. mutations") +
+  geom_histogram(aes(y=..count..,fill=as.factor(nom)),size=1,position="stack",binwidth=8)  +
+  scale_fill_manual(values=scales::seq_gradient_pal(high = "#E64B35FF", low = "#4DBBD5FF",space="Lab")(seq(0,1,length.out=3)), 
+                    name="No. of mutations") +
   xlab("Age in Years") + 
-  #xlim(15,85) +
   ylab("Number of Patients") + 
-  #ggtitle("Age Distribution according to CH status") +
   my_theme()  -> p.agedens 
 p.agedens
 

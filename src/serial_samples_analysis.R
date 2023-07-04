@@ -80,7 +80,7 @@ df.eot %>%
   filter(n.material>1)%>%
   filter(ExonicFunc != "synonymous SNV") %>%
   filter(Func == "exonic"|Func == "splicing"|Func == "exonic;splicing") %>%
-  filter(AF<0.1)%>%
+  filter(AF<0.01)%>%
   filter(snp==FALSE)%>%
   group_by(Patient.ID,position) %>%
   mutate(maxVAF = max(TVAF),

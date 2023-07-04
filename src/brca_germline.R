@@ -25,6 +25,7 @@ load('data/interim/seqdata.RData')
 
 ######## Get Patient ids
 source("src/ids.R")
+source("src/genegroup_definitions.R")
 
 # BRCA Exchange database for BRCA germline status
 brcaexchange <- read.table("data/external/BRCA_Exchange_Liste_shortend.csv",sep=";",header=TRUE)
@@ -43,7 +44,7 @@ df %>%
   left_join(., brcaexchange, by="Genomic_Coordinate_hg38") %>%
   filter(is.element(BRCA.Exchange_Pathogenicity_expert,c("Pathogenic","Not Yet Reviewed"))|
            (is.na(BRCA.Exchange_Pathogenicity_expert)&
-              (is.element(ExonicFunc,c("frameshift substitution","stopgain"))|
+              (is.element(ExonicFunc,c("frameshift substitution","stopgain","startloss"))|
                  is.element(Func,c("splicing","exonic;splicing")))))%>%## all variants that are classified as pathogenic by expert panel or not yet reviewed, or that have no match in BRCA exchange but are truncating
   filter(!str_detect(BRCA.Exchange_Clinical_Significance_ClinVar,"Benign")|is.na(BRCA.Exchange_Clinical_Significance_ClinVar))-> df.brca_germline
 
@@ -69,7 +70,7 @@ df %>%
   filter(ExonicFunc!= "synonymous SNV") %>%
   filter(Func == "exonic")%>%
   filter(AF < 0.01) %>%
-  filter(is.element(ExonicFunc,c("frameshift substitution","stopgain"))) -> df.hrd_germline#this list has to be discussed with an expert
+  filter(is.element(ExonicFunc,c("frameshift substitution","stopgain","startloss"))) -> df.hrd_germline#this list has to be discussed with an expert
 
 
 ids %>% 

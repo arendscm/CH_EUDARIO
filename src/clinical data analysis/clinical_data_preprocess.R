@@ -26,7 +26,7 @@ library(fastDummies)
 
 ########   Load IDs    ########
 source("src/material_table.R")
-
+source("src/genegroup_definitions.R")
 
 ########## Load mutation data with clinical data ##########
 load("data/interim/seqdata_filtered.RData")
@@ -39,6 +39,7 @@ df.response <- data.frame(read.table("data/external/response_modified.csv",heade
 
 ##load BRCA germline status
 load("data/interim/brca.Rdata")
+load("data/interim/brca_somatic.Rdata")
 
 #irrelevant variables
 irrel_var <- c("Date_subsequent.progression","AdditionalCancerTherapy","ORR")
@@ -93,18 +94,19 @@ df.clin <- df.clin_orig %>%
                                                          dplyr::select(patient_code)%>% 
                                                          unique)$patient_code),
          )%>%
-  
-  
   filter(is.element(Patient.ID,ids %>% filter(firstTimepoint_wb==1) %>%.$Patient.ID)) %>% #only patients with available seq data
-  left_join(.,id.brca_germline, by="Patient.ID") #add BRCA germline status
-
+  left_join(.,id.brca_germline, by="Patient.ID") %>% #add BRCA germline status
+  left_join(.,id.brca_somatic, by="Patient.ID") %>% #add BRCA somatic muts
+  left_join(.,df.bc%>%mutate(Patient.ID = as.character(patient_code))%>%filter(cycle_day==" C1D1")%>%dplyr::select(Patient.ID,hemoglobin,thr,wbc,CA125))
 
 ########## Join mutation data with clinical data ##########
 df.mut <- df.filtered.c1d1%>% 
   filter(TVAF >= 0.01)%>%
   filter(tag=="true")%>%
   dplyr::select("Patient.ID","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "ExonicFunc", "AAChange","TR1","TR2","TVAF","cosmic92_coding") %>%
-  mutate(CHPD = ifelse(str_detect(cosmic92_coding,"haema")|((is.element(Gene,c("DNMT3A","TET2","ASXL1","PPM1D","TP53","RAD21","STAG2","ATM")))&(ExonicFunc=="stopgain"|ExonicFunc=="frameshift substitution")),1,0))
+  mutate(CH = is.element(Gene,ch_genes),
+         HRD = is.element(Gene,hrd_genes),
+         DDR = is.element(Gene,ddr_genes))
 
 #create dummies
 df.mut %>% 
@@ -122,13 +124,14 @@ df.mut %>%
             CHEK2 = sum(Gene_CHEK2),
             ATM = sum(Gene_ATM),
             maxVAF = max(TVAF),
-            CHPD = sign(sum(CHPD)))%>%
+            CH = sign(sum(CH)),
+            HRD = sign(sum(HRD)),
+            DDR = sign(sum(DDR)))%>%
   data.frame%>%
   mutate(DTA = sign(DNMT3A + TET2 + ASXL1),
          tp53ppm1d = sign(TP53+PPM1D),
-         DDR = sign(PPM1D+TP53+CHEK2+ATM),
          splice_mut = sign(SF3B1+U2AF1),
-         CH = 1,
+         any_clone = 1,
          CHIP = ifelse(maxVAF >= 0.02,1,0),
          CH5 = ifelse(maxVAF >= 0.05,1,0),
          CH10 = ifelse(maxVAF >= 0.1,1,0),
@@ -139,7 +142,7 @@ df.mut %>%
 ##Fuse mutation data with clinical data
 df <- df.clin %>% 
   full_join(.,df.mut.dummy,by="Patient.ID") %>% 
-  mutate_at(.vars = vars(c("DNMT3A", "TET2", "ASXL1","SF3B1","U2AF1","PPM1D","TP53","CHEK2","ATM","tp53ppm1d","DTA","DDR","splice_mut","CH","CHIP","CH5","CH10","nond3a.mut","CHPD")),
+  mutate_at(.vars = vars(c("DNMT3A", "TET2", "ASXL1","SF3B1","U2AF1","PPM1D","TP53","CHEK2","ATM","tp53ppm1d","DTA","DDR","splice_mut","CH","any_clone","HRD","CHIP","CH5","CH10","nond3a.mut")),
             .funs = list(~as.factor(sign(ifelse(is.na(.),0,.))))) %>%  
   mutate_at(.vars = vars(c("nom","maxVAF","mult.mut")),
             .funs = list(~ifelse(is.na(.),0,.))) 

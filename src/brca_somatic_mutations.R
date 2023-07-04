@@ -38,14 +38,13 @@ df -> df.backup
 df.backup %>% filter(Material == "cf",
               Visite == "C1D1") -> df.c1d1
 
-df.backup %>% filter(Material == "cf",
-                 Visite == "EOT") -> df.eot
-
 ##HRD genes
 hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3", "BRCA1", "BRCA2")
 
-##load BRCA germline mutations
-source("src/brca_germline.R")
+
+#load brca exchange database
+brcaexchange <- read.table("data/external/BRCA_Exchange_Liste_shortend.csv",sep=";",header=TRUE)
+
 
 #####BRCA germline and somatic mutations c1d1
 df.c1d1 %>%
@@ -53,23 +52,30 @@ df.c1d1 %>%
   filter(ExonicFunc != "synonymous SNV")%>%
   filter(FisherScore < 20) %>% 
   filter(StrandBalance2 != 1 & StrandBalance2 != 0) %>%     #filter out mutations only seen on one strand
-  filter(TR2 > 19) %>%
-  filter(TVAF >0.01) %>%
-  filter(p.binom< -10)%>%
+  filter(TR2 > 15) %>%
+  filter(TVAF >=0.01) %>%
+  filter(p.binom <= -Inf)%>%
   filter(mutFreq < 0.1*n.lane)%>%
-  filter(!snp)->df.c1d1.brca_som
+  filter(AF < 0.05) %>%
+  filter(!snp) %>% 
+  left_join(., brcaexchange, by="Genomic_Coordinate_hg38") %>%
+  filter(is.element(BRCA.Exchange_Pathogenicity_expert,c("Pathogenic","Not Yet Reviewed"))|
+           (is.na(BRCA.Exchange_Pathogenicity_expert)&
+              (is.element(ExonicFunc,c("frameshift substitution","stopgain","startloss"))|
+                 is.element(Func,c("splicing","exonic;splicing")))))%>%## all variants that are classified as pathogenic by expert panel or not yet reviewed, or that have no match in BRCA exchange but are truncating
+  filter(!str_detect(BRCA.Exchange_Clinical_Significance_ClinVar,"Benign")|is.na(BRCA.Exchange_Clinical_Significance_ClinVar))%>%
+  filter(TVAF < 0.2)->df.brca_somatic
 
-##brca germline and somatic mutations at EOT
-df.eot %>%
-  filter(Gene == "BRCA1"|Gene == "BRCA2") %>%
-  #filter(ExonicFunc != "synonymous SNV")%>%
-  filter(FisherScore < 20) %>% 
-  filter(StrandBalance2 != 1 & StrandBalance2 != 0) %>%     #filter out mutations only seen on one strand
-  filter(TR2 > 19) %>%
-  filter(TVAF >0.005) %>%
-  filter(p.binom< -10)%>%
-  filter(mutFreq < 0.1*n.lane)%>%
-  filter(!snp)%>%select(Patient.ID,Chr,Start,End,Ref,Alt,Gene,Func,ExonicFunc,TVAF,n.material,n.visite,c1d1_cf,eot_cf)
+ids %>% 
+  filter(Material=="cf") %>%
+  filter(Visite == "C1D1")%>%
+  mutate(brca1_somatic = ifelse(is.element(Patient.ID,(df.brca_somatic%>%filter(Gene=="BRCA1"))$Patient.ID),1,0))%>%
+  mutate(brca2_somatic = ifelse(is.element(Patient.ID,(df.brca_somatic%>%filter(Gene=="BRCA2"))$Patient.ID),1,0))%>%
+  dplyr::select(Patient.ID,brca1_somatic,brca2_somatic) %>% 
+  unique -> id.brca_somatic
 
-filename="output/BRCA_and_HRD_GermlineStatus.xlsx"
-write.xlsx(df.c1d1.brca_som,filename,sheetName="somatic BRCA",append=TRUE)
+tempdata <-ls()
+rm(list=tempdata[tempdata != "id.brca_somatic"&tempdata != "df.brca_somatic"])
+rm(tempdata)
+
+save.image("data/interim/brca_somatic.RData")

@@ -24,10 +24,12 @@ library(dplyr)
 library(tableone)
 library(ggplot2)
 library(ggsci)
+library(ggpubr)
 
 ########   Load IDs    ########
 source("src/material_table.R")
 source("src/global_functions_themes.R")
+source("src/genegroup_definitions.R")
 
 ########## Load clinical data  ##########
 load("data/interim/clin.RData")
@@ -74,7 +76,6 @@ p.mutprev_parpi
 png("output/figures/mutprev_priorparpi.png",width=6, height=6,units="in",res=500,type="cairo")
 p.mutprev_parpi
 dev.off()
-
 
 ####### mut spect in pats with differing no of prior platinum lines
 
@@ -148,7 +149,64 @@ log.reg <- glm(CH ~ Age_TreatmentStartEUDARIO  +PriorPARPi + No_Platinum_lines_b
 summary(log.reg)
 
 
+##### compare number of mutations as a function of prior PARPi
 
+df.clin %>% 
+  dplyr::select(Patient.ID,nom,PriorPARPi)%>%
+  unique%>%
+  ggplot(aes(x=PriorPARPi, group=as.factor(nom), fill=as.factor(nom))) +
+  geom_bar(stat="count", width=0.6, position="stack")+
+  xlab("Prior PARPi")+
+  ylab("Patient count") +
+  my_theme()+
+  scale_fill_manual(values=scales::seq_gradient_pal(high = "#E64B35FF", low = "#4DBBD5FF",space="Lab")(seq(0,1,length.out=9)), 
+                    name="No. of mutations") -> p.nom_parpi
+p.nom_parpi
 
+png("output/figures/nom_priorparpi.png",width=6, height=6,units="in",res=500,type="cairo")
+p.nom_parpi
+dev.off()
 
+## number of mutations as a function of prior lines
+df.clin %>% 
+  mutate(No_PreviousLines = factor(ifelse(Number_PreviousLines >= 3, ">2",Number_PreviousLines),levels=c("1","2",">2")))%>%
+  dplyr::select(Patient.ID,nom,No_PreviousLines)%>%
+  unique%>%
+  ggplot(aes(x=No_PreviousLines, group=as.factor(nom), fill=as.factor(nom))) +
+  geom_bar(stat="count", width=0.6, position="stack")+
+  xlab("No. previous therapy lines")+
+  ylab("Patient count") +
+  my_theme()+
+  scale_fill_manual(values=scales::seq_gradient_pal(high = "#E64B35FF", low = "#4DBBD5FF",space="Lab")(seq(0,1,length.out=9)), 
+                    name="No. of mutations") -> p.nom_prevlines
+p.nom_prevlines
 
+png("output/figures/nom_prevlines.png",width=6, height=6,units="in",res=500,type="cairo")
+p.nom_prevlines
+dev.off()
+
+####compare median VAFS as a function of prior PARPi #########################
+df.clin %>%
+  filter(CH==1)%>%
+  ggboxplot(., 
+            x = "Number_PreviousLines",
+            y = "maxVAF",
+            combine = TRUE,
+            xlab = "Prior PARPi treatment",
+            ylab = "Variant allele frequency",
+            title = "",
+            width = 0.3,
+            #ylim = c(-4,16),
+            size=0.8,
+            alpha=1,
+            repel=TRUE,
+            #yscale = "log10",
+            scales = "free",
+            add = c("jitter")
+  )+
+  stat_compare_means()+
+  scale_color_npg()+
+  theme_minimal() + 
+  theme(axis.title.x = element_blank()) ->p.VAF_boxplot
+
+####compare VAFS as a function of prior PARPi time#########################

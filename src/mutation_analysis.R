@@ -30,7 +30,6 @@ library(ggsci)
 ########  Load preprocessed sequencing data
 #df <- read.csv('data/interim/mutationcalls.csv')
 load('data/interim/seqdata_filtered.RData')
-df.filtered.c1d1 <-df.filtered.c1d1[is.na(df.filtered.c1d1$replicate),]
 
 ######## Get Patient ids
 source("src/material_table.R")
@@ -212,6 +211,7 @@ df.maf <- read.maf(makeMAF(df.filtered.c1d1%>% filter(tag=="true",TVAF >= 0.01))
 oncoplot(df.maf)
 
 
+##############     Klara     ##################################################
 ########   Rose Chart ####
 # Create dataset
 df.filtered.c1d1%>%
@@ -297,98 +297,6 @@ png("output/figures/p.rosechart.png",width=8, height=8,units="in",res=500,type="
 p.rosechart
 dev.off()
 
-
-
-########   prevalence plot by PATHOGENIC BRCA status####
-source("src/brca_germline.R")
-df.filtered.c1d1 %>% 
-  filter(tag == "true") %>%
-  filter(TVAF >= 0.01) %>%
-  dplyr::select(Patient.ID) %>% unique -> id.ch
-id.brca_germline %>% 
-  mutate(CH = ifelse(is.element(Patient.ID,id.ch$Patient.ID),1,0))%>%
-  dplyr::select(brca_germline,CH) %>% 
-  table -> brca_status
-
-##prevalence plot by BRCA status
-load('data/interim/id.BRCA_path.RDATA')
-#How many BRCA+/- and CH+/-
-id.brca_germline_path%>%
-  filter(brca_germline == 1)%>%
-  .$Patient.ID->ID.BRCA.path  # n() -> how many are BRCA mutated
-#not BRCA Muatated patients = 94-ID.BRCA.path
-df.filtered.c1d1%>%
-  filter(Patient.ID %in% ID.BRCA.path)%>%
-  filter(TVAF >= 0.01)%>%
-  filter(tag == "true")->mutations_in_BRCA_pos
-mutations_in_BRCA_pos$Patient.ID%>%
-  unique->No.ID.pos #how many are BRCA+ and CH+
-df.filtered.c1d1%>%
-  filter(!Patient.ID %in% ID.BRCA.path)%>%
-  filter(TVAF >= 0.01)%>%
-  filter(tag == "true")->mutations_in_BRCA_neg
-mutations_in_BRCA_neg$Patient.ID%>%
-  unique->No.ID.pos #how many are BRCA- and CH+
-n.brcamut <- id.brca_germline_path %>% 
-  mutate(CH = ifelse(is.element(Patient.ID,id.ch$Patient.ID),1,0))%>%
-  dplyr::select(brca_germline) %>% sum 
-
-df.filtered.c1d1 %>% 
-  filter(tag == "true") %>%
-  filter(TVAF >= 0.01) %>%
-  left_join(.,id.brca_germline_path,by = "Patient.ID")%>%
-  filter(brca_germline==0)%>%
-  dplyr::select(Sample, Gene) %>% 
-  data.frame %>% 
-  unique %>% 
-  dplyr::select(Gene) %>% 
-  table %>% 
-  data.frame %>% 
-  mutate(prev = Freq/(nop-n.brcamut)) %>% 
-  arrange(prev) %>%
-  mutate(brca = 0) -> prev.table_brca0
-names(prev.table_brca0)<- c( "Gene","Freq","prev","brca")
-
-#prevalences in brca mutated patients
-
-df.filtered.c1d1 %>% 
-  filter(tag == "true") %>%
-  filter(TVAF >= 0.01) %>%
-  left_join(.,id.brca_germline_path,by = "Patient.ID")%>%
-  filter(brca_germline==1)%>%
-  dplyr::select(Sample, Gene) %>% 
-  data.frame %>% 
-  unique %>% 
-  dplyr::select(Gene) %>% 
-  table %>% 
-  data.frame %>% 
-  mutate(prev = Freq/n.brcamut) %>% 
-  arrange(prev) %>%
-  mutate(brca=1) -> prev.table_brca1
-names(prev.table_brca1)<- c( "Gene","Freq","prev","brca")
-
-full_join(prev.table_brca0,prev.table_brca1) %>% dplyr::select(Gene) %>% unique -> gene
-gene %>% left_join(prev.table_brca0) %>% mutate(prev = ifelse(is.na(prev),0,prev),brca=0)->brca0
-gene %>% left_join(prev.table_brca1)%>% mutate(prev = ifelse(is.na(prev),0,prev),brca=1)->brca1
-full_join(brca0,brca1)->prev.brca
-
-prev.brca  %>%
-  ggplot(aes(x=reorder(Gene, prev), y=prev, fill = factor(brca),group=brca)) +
-  geom_bar(stat="identity", width=0.6,position=position_dodge())+
-  #geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
-  xlab("")+
-  scale_y_continuous(labels = percent,limits=c(0,0.4), position = "right")+
-  ylab("Gene Mutation Prevalence [%]") +
-  my_theme() +
-  theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35,face="italic")) +
-  scale_fill_viridis(discrete=TRUE) +
-  scale_fill_manual(values = c("0" = "#486081", "1" = "#88acd4")) +
-  coord_flip() -> p.mutprev_path
-p.mutprev_path
-
-png("output/figures/mutprev-BRCA_path.png",width=6, height=6,units="in",res=500,type="cairo")
-p.mutprev_path
-dev.off()
 
 
 

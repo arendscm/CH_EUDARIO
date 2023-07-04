@@ -110,7 +110,9 @@ inner_join(mutID.func,mutID.count) %>%
   mutate(n.calls = n()) %>% 
   data.frame-> df.filtered  
 
-df.filtered %>% filter(firstTimepoint_wb == 1)-> df.filtered.c1d1
+df.filtered %>% 
+  filter(firstTimepoint_wb == 1) %>% 
+  filter(is.element(Patient.ID,ids %>% filter(firstTimepoint_wb==1)%>%.$Patient.ID)) -> df.filtered.c1d1
 
 rm(mutID.CHIP)+
 rm(mutID.CHIP.qual)+
