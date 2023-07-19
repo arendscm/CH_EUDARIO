@@ -105,7 +105,8 @@ names(prev.table)<- c( "Gene","Freq","prev")
 
 prev.table  %>%
   mutate(HRD = ifelse(is.element(Gene,hrd_genes),"HRD","non-HRD"))%>%
-  ggplot(aes(x=reorder(Gene, Freq), y=prev, fill=HRD)) +
+  mutate(DDR = ifelse(is.element(Gene,ddr_genes),"DDR","non-DDR"))%>%
+  ggplot(aes(x=reorder(Gene, Freq), y=prev, fill=DDR)) +
   geom_bar(stat="identity", width=0.6)+
   geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
   xlab("")+
@@ -115,7 +116,7 @@ prev.table  %>%
   theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35,face="italic")) +
   coord_flip() + 
   theme(legend.position = c(0.7, 0.3))+
-  scale_fill_npg() -> p.mutprev
+  scale_fill_npg(name="DNA damage response") -> p.mutprev
 p.mutprev
 
 png("output/figures/mutprev.png",width=6, height=6,units="in",res=500,type="cairo")
@@ -124,8 +125,6 @@ dev.off()
 
 
 ########   Number of Mutations per Gene with type of mutation  ####
-
-
 
 #########    No of mutations per patient
 ids %>% 
@@ -150,14 +149,14 @@ df.nom %>%
   filter(nom!=0)%>%
   ggplot(., aes(x = nom, y = Freq, fill="1")) +
   geom_bar(stat = "identity") +
-  labs(x = "Number of Mutations", y = "Number of Patients")+
+  labs(x = "No. of mutations", y = "No. of patients")+
   scale_fill_npg(name="",breaks=c(""))+
   #scale_x_continuous(limits = c(0.5, 8.5), breaks = 1:8)+
   #ggtitle("No. of mutations per patient [>1%]")+
   my_theme()->p.nom
 p.nom
 
-png("output/figures/nom.png",width=4, height=3,units="in",res=500,type="cairo")
+png("output/figures/nom.png",width=4, height=4,units="in",res=500,type="cairo")
 p.nom
 dev.off()
 
@@ -201,14 +200,7 @@ dev.off()
 
 
 
-########   MAFTOOLS - Oncoplot #### 
 
-library(maftools)
-
-###turn df.filtered into MAF compatible format
-df.maf <- read.maf(makeMAF(df.filtered.c1d1%>% filter(tag=="true",TVAF >= 0.01)))
-
-oncoplot(df.maf)
 
 
 ##############     Klara     ##################################################

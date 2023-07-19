@@ -38,6 +38,7 @@ my_vars_baseline=c("Age_TreatmentStartEUDARIO",
                    "Arm",
                    "ECOG",
                    "TumorBurden_baseline",
+                   "SecondaryMalignancy",
                    "LVEF_C1D1",
                    "BRCA1",
                    "brca1_germline",
@@ -59,6 +60,7 @@ cat_vars_baseline=c("Arm",
                     "brca1_germline",
                     "BRCA2",
                     "brca2_germline",
+                    "SecondaryMalignancy",
                    "ECOG",
                    "Type_PreviousTherapy",
                    "PriorPARPi",
@@ -90,12 +92,12 @@ df.clin %>% mutate(nom = ifelse(nom==0,"0",ifelse(nom==1,"1",">1")))%>%
   geom_histogram(aes(y=..count..,fill=as.factor(nom)),size=1,position="stack",binwidth=8)  +
   scale_fill_manual(values=scales::seq_gradient_pal(high = "#E64B35FF", low = "#4DBBD5FF",space="Lab")(seq(0,1,length.out=3)), 
                     name="No. of mutations") +
-  xlab("Age in Years") + 
-  ylab("Number of Patients") + 
+  xlab("Age in years") + 
+  ylab("No. of patients") + 
   my_theme()  -> p.agedens 
 p.agedens
 
-png("output/figures/agedens.png",width=6, height=5,units="in",res=500,type="cairo")
+png("output/figures/agedens.png",width=5, height=4,units="in",res=500,type="cairo")
 p.agedens
 dev.off()
 

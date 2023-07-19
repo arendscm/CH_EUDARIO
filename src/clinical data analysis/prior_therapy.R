@@ -145,7 +145,7 @@ df.clin %>% CreateTableOne(strata = "CH",
 
 ####### logistic regression ########################
 
-log.reg <- glm(CH ~ Age_TreatmentStartEUDARIO  +PriorPARPi + No_Platinum_lines_binom, family="binomial",data=df.clin)
+log.reg <- glm(CH ~ Age_TreatmentStartEUDARIO  +PriorPARPi + Number_PreviousLines, family="binomial",data=df.clin)
 summary(log.reg)
 
 
@@ -156,14 +156,14 @@ df.clin %>%
   unique%>%
   ggplot(aes(x=PriorPARPi, group=as.factor(nom), fill=as.factor(nom))) +
   geom_bar(stat="count", width=0.6, position="stack")+
-  xlab("Prior PARPi")+
-  ylab("Patient count") +
+  xlab("Prior PARPi treatment")+
+  ylab("No. of patients") +
   my_theme()+
   scale_fill_manual(values=scales::seq_gradient_pal(high = "#E64B35FF", low = "#4DBBD5FF",space="Lab")(seq(0,1,length.out=9)), 
                     name="No. of mutations") -> p.nom_parpi
 p.nom_parpi
 
-png("output/figures/nom_priorparpi.png",width=6, height=6,units="in",res=500,type="cairo")
+png("output/figures/nom_priorparpi.png",width=4, height=4,units="in",res=500,type="cairo")
 p.nom_parpi
 dev.off()
 
@@ -174,14 +174,14 @@ df.clin %>%
   unique%>%
   ggplot(aes(x=No_PreviousLines, group=as.factor(nom), fill=as.factor(nom))) +
   geom_bar(stat="count", width=0.6, position="stack")+
-  xlab("No. previous therapy lines")+
-  ylab("Patient count") +
+  xlab("No. of previous therapy lines")+
+  ylab("No. of patients") +
   my_theme()+
   scale_fill_manual(values=scales::seq_gradient_pal(high = "#E64B35FF", low = "#4DBBD5FF",space="Lab")(seq(0,1,length.out=9)), 
                     name="No. of mutations") -> p.nom_prevlines
 p.nom_prevlines
 
-png("output/figures/nom_prevlines.png",width=6, height=6,units="in",res=500,type="cairo")
+png("output/figures/nom_prevlines.png",width=5, height=4,units="in",res=500,type="cairo")
 p.nom_prevlines
 dev.off()
 

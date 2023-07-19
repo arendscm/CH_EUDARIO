@@ -102,7 +102,7 @@ cat_vars_baseline=c("Arm",
 
 cont_vars_baseline = setdiff(my_vars_baseline,cat_vars_baseline)
 
-df.clin %>% CreateTableOne(strata = "DDR",
+df.clin %>% CreateTableOne(strata = "PPM1D",
                       vars=c(my_vars_baseline),
                       factorVars = cat_vars_baseline,
                       includeNA=FALSE,
@@ -117,7 +117,7 @@ df.clin %>% CreateTableOne(strata = "DDR",
 
 ####### logistic regression ########################
 
-log.reg <- glm(DDR ~ Age_TreatmentStartEUDARIO + PriorPARPi + No_Platinum_lines_binom + BRCA_germline, family="binomial",data=df.clin)
+log.reg <- glm(DTA ~ Age_TreatmentStartEUDARIO + PriorPARPi + No_Platinum_lines_binom + BRCA_germline, family="binomial",data=df.clin)
 summary(log.reg)
 
 

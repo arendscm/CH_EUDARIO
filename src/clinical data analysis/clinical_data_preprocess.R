@@ -56,7 +56,9 @@ df.clin <- df.clin_orig %>%
          response_binom = ifelse(Response_best == "NAP",NA,
                                  ifelse(Response_best =="CR"|Response_best =="PR","CR or PR","SD or PD")),
          response_binom2 = ifelse(Response_best == "NAP",NA,
-                                 ifelse(Response_best =="CR"|Response_best =="PR"|Response_best =="SD","CR, PR or SD","PD")))%>%
+                                 ifelse(Response_best =="CR"|Response_best =="PR"|Response_best =="SD","CR, PR or SD","PD")),
+         response_binom3 = ifelse(Response_best == "NAP",NA,
+                           ifelse(Response_best =="CR","CR","no CR")))%>%
   mutate(ae_haematotox = is.element(Patient.ID,(df.ae %>%
                                                   filter(is.element(AE_consensus_term,c("neutropenia","thrombocytopenia","anemia")))%>%
                                                   dplyr::select(patient_code)%>% 
@@ -97,6 +99,8 @@ df.clin <- df.clin_orig %>%
   filter(is.element(Patient.ID,ids %>% filter(firstTimepoint_wb==1) %>%.$Patient.ID)) %>% #only patients with available seq data
   left_join(.,id.brca_germline, by="Patient.ID") %>% #add BRCA germline status
   left_join(.,id.brca_somatic, by="Patient.ID") %>% #add BRCA somatic muts
+  left_join(.,id.hrd_germline, by="Patient.ID")%>%
+  mutate(HRD_germline = sign(brca1_germline+brca2_germline+hrd_germline))%>%
   left_join(.,df.bc%>%mutate(Patient.ID = as.character(patient_code))%>%filter(cycle_day==" C1D1")%>%dplyr::select(Patient.ID,hemoglobin,thr,wbc,CA125))
 
 ########## Join mutation data with clinical data ##########
@@ -104,7 +108,7 @@ df.mut <- df.filtered.c1d1%>%
   filter(TVAF >= 0.01)%>%
   filter(tag=="true")%>%
   dplyr::select("Patient.ID","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "ExonicFunc", "AAChange","TR1","TR2","TVAF","cosmic92_coding") %>%
-  mutate(CH = is.element(Gene,ch_genes),
+  mutate(CH = is.element(Gene,typical_ch_genes),
          HRD = is.element(Gene,hrd_genes),
          DDR = is.element(Gene,ddr_genes))
 

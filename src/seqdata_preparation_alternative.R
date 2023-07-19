@@ -46,7 +46,7 @@ lanes <- read_excel("data/external/Sample-Run-Assignment.xlsx")%>%
 # load tags 
 #tags <- read.table('data/external/tags_run1_run2.csv',
 #                   header = TRUE, sep = ";", stringsAsFactors = FALSE)
-tags <- read.xlsx("data/external/tags_25062023.xlsx",sheetIndex=1,header=TRUE)
+tags <- read.xlsx("data/external/tags_13072023.xlsx",sheetIndex=1,header=TRUE)
 #load("data/interim/tags.RDATA")
 
 ##Patient ID table that identifies Sample IDs with Patient ID and timepoints

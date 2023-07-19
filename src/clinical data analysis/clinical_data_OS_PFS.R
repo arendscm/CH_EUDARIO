@@ -38,7 +38,7 @@ df.clin %>% mutate(brca_germline=brca1_germline+brca2_germline) %>%
   mutate(age_median = ifelse(Age_TreatmentStartEUDARIO >= 62,">=62","<62"))-> df.surv
 
 ########## Response assessment ######################
-my_vars_response=c("Response_best","response_binom","response_binom2")
+my_vars_response=c("Response_best","response_binom","response_binom2","response_binom3")
 
 cat_vars_response=my_vars_response
 
@@ -70,13 +70,13 @@ df.surv %>%
              tables.height = 0.3,
              ylab = "Overall Survival",
              xlab = "Time in Days",
-            # legend.title = "CH status",
-            # legend.labs = c("negative", "positive")
+             legend.title = "CH status",
+             legend.labs = c("negative", "positive")
   ) -> p.os
 
 p.os
 
-png("output/figures/surv_CH.png",width=6, height=6,units="in",res=500,type="cairo")
+png("output/figures/OS_CH.png",width=6, height=6,units="in",res=500,type="cairo")
 p.os
 dev.off()
 
@@ -85,7 +85,7 @@ covariates = c("Age_TreatmentStartEUDARIO","ECOG_binom","PriorPARPi","No_Platinu
 
 finalfit(df.surv, dependent="Surv(OS_days,OS_event)",explanatory=covariates)
 
-fit.coxph <- coxph(Surv(time = df.surv$OS_days, event = df.surv$OS_event) ~ CH + Arm + age_median+ TumorBurden_baseline+ ECOG_binom + Number_PreviousLines, 
+fit.coxph <- coxph(Surv(time = df.surv$OS_days, event = df.surv$OS_event) ~ CH + Arm + Age_TreatmentStartEUDARIO+ TumorBurden_baseline+ ECOG_binom + Number_PreviousLines + SecondaryMalignancy + brca_germline + PriorPARPi, 
                    data = df.surv)
 summary(fit.coxph)
 forest_model(fit.coxph)
@@ -105,13 +105,13 @@ df.surv %>%
              tables.height = 0.3,
              ylab = "Progression-free Survival",
              xlab = "Time in Days",
-             #legend.title = "CH status",
-             #legend.labs = c("negative", "positive")
+             legend.title = "CH status",
+             legend.labs = c("negative", "positive")
   ) -> p.pfs
 
 p.pfs
 
-png("output/figures/surv_CH.png",width=6, height=6,units="in",res=500,type="cairo")
+png("output/figures/PFS_CH.png",width=6, height=6,units="in",res=500,type="cairo")
 p.pfs
 dev.off()
 
@@ -124,7 +124,7 @@ covariates_01 = c("ECOG_binom","PriorPARPi","TumorBurden_baseline","CH")
 finalfit(df.surv, dependent="Surv(PFS_days,PFS_event)",explanatory=covariates_01)
 
 
-fit.coxph <- coxph(Surv(time = df.surv$PFS_days, event = df.surv$PFS_event) ~ CH + Arm + age_median+ TumorBurden_baseline+ ECOG_binom + Number_PreviousLines, 
+fit.coxph <- coxph(Surv(time = df.surv$PFS_days, event = df.surv$PFS_event) ~ CH + strata(Arm) + Age_TreatmentStartEUDARIO+ TumorBurden_baseline+ ECOG_binom + Number_PreviousLines +PriorPARPi +SecondaryMalignancy+brca_germline, 
                    data = df.surv)
 summary(fit.coxph)
 forest_model(fit.coxph)

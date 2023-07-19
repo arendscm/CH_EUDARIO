@@ -40,6 +40,7 @@ df %>%
   filter(Gene == "BRCA1"|Gene =="BRCA2") %>%
   filter(TVAF > 0.1) %>%
   filter(ExonicFunc!= "synonymous SNV") %>%
+  filter(tag!="false")%>%
   filter(AF < 0.05)%>%
   left_join(., brcaexchange, by="Genomic_Coordinate_hg38") %>%
   filter(is.element(BRCA.Exchange_Pathogenicity_expert,c("Pathogenic","Not Yet Reviewed"))|
@@ -49,7 +50,7 @@ df %>%
   filter(!str_detect(BRCA.Exchange_Clinical_Significance_ClinVar,"Benign")|is.na(BRCA.Exchange_Clinical_Significance_ClinVar))-> df.brca_germline
 
 
-##create list of all patients incl BRCA stauts
+##create list of all patients incl BRCA status
 ids %>% 
   filter(Material=="wb") %>%
   filter(firstTimepoint_wb == 1)%>%
@@ -59,28 +60,30 @@ ids %>%
   unique -> id.brca_germline ##this is a list of patient ids with brca status
 
 ##identify other HRD Gene germline mutations
-hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3")
 
 df %>% 
   filter(!is.na(Patient.ID))%>%
   filter(Visite == "C1D1")%>%
   filter(Material == "wb")%>%
   filter(is.element(Gene,hrd_genes)) %>%
-  filter(TVAF > 0.25) %>%
+  filter(!is.element(Gene,brca_genes))%>%
+  filter(TVAF > 0.1) %>%
   filter(ExonicFunc!= "synonymous SNV") %>%
-  filter(Func == "exonic")%>%
+  filter(Func == "exonic"|is.element(Func,c("splicing","exonic;splicing")))%>%
   filter(AF < 0.01) %>%
-  filter(is.element(ExonicFunc,c("frameshift substitution","stopgain","startloss"))) -> df.hrd_germline#this list has to be discussed with an expert
+  filter(is.element(ExonicFunc,c("frameshift substitution","stopgain","startloss","."))) -> df.hrd_germline #this list has to be discussed with an expert
 
 
 ids %>% 
-  mutate(hrd_germline = ifelse(is.element(Patient.ID,df.brca_germline$Patient.ID),1,0))%>%
+  filter(Material=="wb") %>%
+  filter(firstTimepoint_wb == 1)%>%
+  mutate(hrd_germline = ifelse(is.element(Patient.ID,df.hrd_germline$Patient.ID),1,0))%>%
   dplyr::select(Patient.ID,hrd_germline) %>% 
   unique -> id.hrd_germline
 
 ##Save RData for further use
 tempdata <-ls()
-rm(list=tempdata[tempdata != "id.brca_germline"&tempdata != "df.brca_germline"])
+rm(list=tempdata[!is.element(tempdata,c("df.hrd_germline","id.hrd_germline","df.brca_germline","id.brca_germline"))])
 rm(tempdata)
 
 save.image("data/interim/brca.RData")

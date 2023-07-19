@@ -26,10 +26,9 @@ library(forcats)
 #setwd('H:/Meine Ablage')
 #setwd("C:/Users/maxar/Documents/AG Damm/EUDARIO/data_analysis/EUDARIO")
 
-
 makeMAF <- function(df){
 df %>% 
-  filter(Func == "exonic")%>%
+  filter(Func == "exonic"|Func=="splicing")%>%
   separate(.,AAChange,
            into=c("transcript1","rest"),
            sep=",",
@@ -53,7 +52,7 @@ df %>%
            remove = TRUE,
            convert = FALSE)%>%
   mutate(AA_position = extract_numeric(AA_pos2))%>%
-  dplyr::select(gene,amino_acid_change,AA_position,Sample,ExonicFunc,Chr,Start,End,Ref,Alt,TVAF)->df.temp
+  dplyr::select(Gene,amino_acid_change,AA_position,Patient.ID,ExonicFunc,Chr,Start,End,Ref,Alt,TVAF)->df.temp
 
 names(df.temp) <- c(
   "Hugo_Symbol",
@@ -79,7 +78,8 @@ variant_replacements = c('nonframeshift substitutiondel' = 'In_Frame_Del',
                       'stoploss.' = 'Nonstop_Mutation',
                       'stoplossdel' = 'Nonstop_Mutation',
                       'frameshift substitutiondel' = 'Frame_Shift_Del',
-                      'frameshift substitutionins' =  'Frame_Shift_Ins')
+                      'frameshift substitutionins' =  'Frame_Shift_Ins',
+                      '..' = "Splice_Site")
 
 indel_replacements = c('ins' = 'INS', 
                        'del' = 'DEL',

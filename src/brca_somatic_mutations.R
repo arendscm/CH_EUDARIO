@@ -30,6 +30,7 @@ load('data/interim/seqdata.RData')
 ##load hotspot data
 load('data/interim/hotspots.RData')
 
+
 ######## Get Patient ids
 source("src/ids.R")
 
@@ -37,10 +38,6 @@ source("src/ids.R")
 df -> df.backup
 df.backup %>% filter(Material == "cf",
               Visite == "C1D1") -> df.c1d1
-
-##HRD genes
-hrd_genes <- c("ATM","ATR","BARD1","BRIP1","CDK12","CHEK1","CHEK2","EMSY","FAM175A","FANCA","FANCC","FANCI","FANCL","MLH1","MRE11","MSH2","MSH6","NBN","PALB2","PMS2","RAD21","RAD50","RAD51","RAD51C","RAD51D","RAD52","RAD54L","PTEN","BRCC3", "BRCA1", "BRCA2")
-
 
 #load brca exchange database
 brcaexchange <- read.table("data/external/BRCA_Exchange_Liste_shortend.csv",sep=";",header=TRUE)
@@ -52,7 +49,7 @@ df.c1d1 %>%
   filter(ExonicFunc != "synonymous SNV")%>%
   filter(FisherScore < 20) %>% 
   filter(StrandBalance2 != 1 & StrandBalance2 != 0) %>%     #filter out mutations only seen on one strand
-  filter(TR2 > 15) %>%
+  filter(TR2 > 19) %>%
   filter(TVAF >=0.01) %>%
   filter(p.binom <= -Inf)%>%
   filter(mutFreq < 0.1*n.lane)%>%

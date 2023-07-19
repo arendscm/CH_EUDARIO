@@ -19,7 +19,6 @@ library(tidyr)
 library(reshape2)
 library(ggplot2)
 library(ggthemes)
-library(viridis)
 library(ggpubr)
 library(g3viz)
 library(ggsci)
@@ -28,8 +27,8 @@ library(ggsci)
 ########  Load preprocessed sequencing data
 #df <- read.csv('data/interim/mutationcalls.csv')
 load('data/interim/seqdata.RData')
-load('data/interim/seqdata_filtered.RData')
-load('data/interim/seqdata_filtered_cf.RData')
+#load('data/interim/seqdata_filtered.RData')
+#load('data/interim/seqdata_filtered_cf.RData')
 
 ######## Get Patient ids
 source("src/material_table.R")
@@ -43,9 +42,8 @@ source("src/genegroup_definitions.R")
 
 ##df preparation
 df %>% mutate(gene_group =  ifelse(is.element(Gene,tp53_genes),"TP53",
-                                   ifelse(is.element(Gene,ppm1d_genes),"PPM1D",
-                                          ifelse(is.element(Gene,hrd_genes),"HRD",
-                                                 ifelse(is.element(Gene,ch_genes_without_HRD),"CH","other"))))) %>%
+                                   ifelse(is.element(Gene,hrd_genes),"HRD",
+                                                 ifelse(is.element(Gene,typical_ch_genes),"CH","other myeloid")))) %>%
   mutate(frac_mut = mutFreq/n.lane) -> df
 
 ##relevant variables
@@ -153,16 +151,16 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
              )) +
   geom_point(size=2)+
   geom_abline(slope=1,size=1,linetype=2,alpha=0.5)+
-  geom_abline(slope=1/3,size=1,linetype=3,alpha=0.5,intercept=-2)+
+  #geom_abline(slope=1/3,size=1,linetype=3,alpha=0.5,intercept=-2)+
   scale_y_log10()+
   scale_x_log10()+
-  scale_color_npg()+
+  scale_color_npg(name="Gene group",labels=c("CH genes","HRD genes","other myeloid genes","TP53"))+
   ylab("whole blood VAF")+
   xlab("cfDNA VAF")+
   theme_minimal()->p.cf.corr
 p.cf.corr
 
-png("output/figures/p.cf.corr.all.png",width=10, height=6,units="in",res=500,type="cairo")
+png("output/figures/p.cf.corr.all.png",width=8, height=6,units="in",res=500,type="cairo")
 p.cf.corr
 dev.off()
 
@@ -177,7 +175,7 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
                              as.character(tag.y)),
                       as.character(tag.x)))%>%
   mutate(gene_group = ifelse(is.na(gene_group.x),gene_group.y,gene_group.x))%>%
-  mutate(compartment = ifelse(TVAF.x > TVAF.y*5,"cf","wb"))%>%
+  mutate(compartment = ifelse(TVAF.x > TVAF.y*10,"cf","wb"))%>%
   dplyr::select(gene_group, compartment) %>% 
   table %>% 
   data.frame %>%
@@ -187,12 +185,32 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
   xlab("")+
   scale_y_continuous(position = "right")+
   ylab("Gene Mutation Frequency") +
-  scale_fill_npg()+
+  scale_fill_npg(name="Origin",labels=c("cf" = "cfDNA", "wb" = "whole-blood"))+
   my_theme() +
   theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35),
         axis.ticks.y = element_blank())+
   coord_flip() -> p.mutprev
 p.mutprev
+
+
+png("output/figures/p.cf.mutprev.png",width=5, height=4,units="in",res=500,type="cairo")
+p.mutprev
+dev.off()
+
+##numbers
+
+full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in% Patmut_all),by="cfID") %>% 
+  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y))%>%
+  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x))%>%
+  filter(TR2.x>9|TR2.y>9)%>%
+  mutate(tag = ifelse(is.na(tag.x),
+                      ifelse(is.na(tag.y),
+                             "not tagged",
+                             as.character(tag.y)),
+                      as.character(tag.x)))%>%
+  mutate(gene_group = ifelse(is.na(gene_group.x),gene_group.y,gene_group.x))%>%
+  mutate(compartment = ifelse(TVAF.x > TVAF.y*10,"cf","wb"))%>%
+  dplyr::select(gene_group, compartment) %>% table
 
 ### Mutationspectrum cf vs wb by gene 
 full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in% Patmut_all),by="cfID") %>% 
@@ -210,6 +228,7 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
   dplyr::select(Gene, compartment) %>% 
   table %>% 
   data.frame  %>%
+  filter(Freq > 1)%>%
   ggplot(aes(x=reorder(Gene, Freq), y=Freq, fill=compartment)) +
   geom_bar(stat="identity", width=0.6, position = "stack")+
   #geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
@@ -218,10 +237,21 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
   ylab("Gene Mutation Frequency") +
   scale_fill_npg()+
   my_theme() +
-  theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35),
+  theme(axis.text.y=element_text(angle=0,
+                                 hjust=1,
+                                 vjust=0.35,
+                                 face="italic"),
         axis.ticks.y = element_blank())+
-  coord_flip() -> p.mutprev
-p.mutprev
+  coord_flip() -> p.mutprev_all
+p.mutprev_all
+
+
+png("output/figures/p.cf.mutprev_all.png",width=6, height=6,units="in",res=500,type="cairo")
+p.mutprev_all
+dev.off()
+
+################## 
+
 
 
 ##Lolliplots for TP53 mutations
