@@ -283,11 +283,24 @@ dev.off()
 
 
 ##emerging and disappearing clones crossing the 1% VAF threshold
-df.eot_rel %>% filter(vaf_d1 < 0.01&vaf_eot >= 0.01) -> df.emerging
-df.eot_rel %>% filter(vaf_d1 >= 0.01&vaf_eot < 0.01) -> df.disappearing
+df.eot_rel %>% filter(vaf_d1 < 0.01&vaf_eot >= 0.01) %>% mutate(class = "emerging")-> df.emerging
+df.eot_rel %>% filter(vaf_d1 >= 0.01&vaf_eot < 0.01) %>% mutate(class = "disappearing")-> df.disappearing
+
+full_join(df.emerging,df.disappearing) %>%
+  mutate(gene = ifelse(is.element(Gene,hrd_genes),"HRD",Gene))%>%
+  ggplot(aes(x=class,fill=gene))+
+  geom_bar(stat="count",width=0.5)+
+  labs(title="",x="", y = "No. of mutations")+
+  my_theme() + 
+  theme(axis.title.x = element_blank(),
+        legend.text = element_text(face="italic")) +
+  scale_fill_npg(name="Gene") -> p.dynamics
+  
+png("output/figures/barchart_dynamics.png",width=4, height=4,units="in",res=500,type="cairo")
+p.dynamics
+dev.off()
 
 #### Fitness of PPM1D by brca status (to see whether dynamics unter PARP Inhb. differ depending on BRCA status?) #### 
-
 df.eot_rel %>% 
   filter(variable == "relvaf2") %>% 
   group_by(Gene)%>%

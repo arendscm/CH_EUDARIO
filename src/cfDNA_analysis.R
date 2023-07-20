@@ -134,7 +134,7 @@ p.cfDNACor
 dev.off()
 
 
-#####  Plot that shows VAF WB vs VAF ctDNA including color for group of mutation - NO Filter####
+#####  Plot that shows VAF WB vs VAF ctDNA including color for group of mutation####
 full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in% Patmut_all),by="cfID") %>% 
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0.001,TVAF.y))%>%
   mutate(TVAF.x = ifelse(is.na(TVAF.x),0.001,TVAF.x))%>%
@@ -164,7 +164,7 @@ png("output/figures/p.cf.corr.all.png",width=8, height=6,units="in",res=500,type
 p.cf.corr
 dev.off()
 
-#####  Max: Mutationspectrum for mutations in WB and cf only mutations by group------------------
+#####   Mutationspectrum for mutations in WB and cf only mutations by group------------------
 full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in% Patmut_all),by="cfID") %>% 
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y))%>%
   mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x))%>%
@@ -184,8 +184,8 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
   #geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
   xlab("")+
   scale_y_continuous(position = "right")+
-  ylab("Gene Mutation Frequency") +
-  scale_fill_npg(name="Origin",labels=c("cf" = "cfDNA", "wb" = "whole-blood"))+
+  ylab("No. of mutations") +
+  scale_fill_npg(name="Origin",labels=c("cf" = "other", "wb" = "hematopoietic"))+
   my_theme() +
   theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35),
         axis.ticks.y = element_blank())+
@@ -193,7 +193,7 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
 p.mutprev
 
 
-png("output/figures/p.cf.mutprev.png",width=5, height=4,units="in",res=500,type="cairo")
+png("output/figures/p.cf.mutprev.png",width=5, height=3,units="in",res=500,type="cairo")
 p.mutprev
 dev.off()
 
@@ -228,14 +228,17 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
   dplyr::select(Gene, compartment) %>% 
   table %>% 
   data.frame  %>%
-  filter(Freq > 1)%>%
-  ggplot(aes(x=reorder(Gene, Freq), y=Freq, fill=compartment)) +
+  group_by(Gene) %>%
+  mutate(Freq_all =sum(Freq))%>%
+  data.frame%>%
+  filter(Freq_all > 1)%>%
+  ggplot(aes(x=reorder(Gene, Freq_all), y=Freq, fill=compartment)) +
   geom_bar(stat="identity", width=0.6, position = "stack")+
   #geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
   xlab("")+
   scale_y_continuous(position = "right")+
-  ylab("Gene Mutation Frequency") +
-  scale_fill_npg()+
+  ylab("No. of mutations") +
+  scale_fill_npg(name="Origin",labels=c("cf" = "other", "wb" = "hematopoietic"))+
   my_theme() +
   theme(axis.text.y=element_text(angle=0,
                                  hjust=1,

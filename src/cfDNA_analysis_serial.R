@@ -45,7 +45,7 @@ source("src/global_functions_themes.R")
 variables <- c("Patient.ID","Sample_orig","mutID","position","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "GeneDetail", "ExonicFunc", "AAChange", "cytoBand","readDepth", "TR1", "TR1_plus", "TR1_minus", "TR2", "TR2_plus", "TR2_minus", "TVAF", "AF", "avsnp150","cosmic92_coding","snp","mutFreq","p.binom","n.mut","n.material","sum_cf","sum_wb","Material","tag", "Patmut")
 
 
-####### serial analysis in patients with 3 timepoints 
+####### serial analysis in patients with 2 timepoints c1d1 and c7d1
 df %>% 
   filter(is.na(replicate))%>%
   filter(!is.na(Patient.ID))%>%
@@ -239,3 +239,20 @@ df.surv %>%
   ) -> p.os
 
 p.os
+
+
+##Correlation of TP53 VAF with CA125 and tumor volume
+library(GGally)
+
+df.cf_c1c7 %>% 
+  filter(is.element(Gene,c("TP53")))%>%
+  group_by(Patient.ID)%>%
+  mutate(maxVAF = max(vaf_c1d1))%>%
+  data.frame%>%
+  filter(vaf_c1d1==maxVAF)%>%
+  left_join(.,df.clin %>% dplyr::select(Patient.ID,CA125,TumorBurden_baseline),by="Patient.ID") %>% 
+  mutate(logVAF = log10(vaf_c1d1),
+         logCA = log10(CA125))%>%
+  dplyr::select(logCA,TumorBurden_baseline,logVAF) %>% 
+  ggpairs(.)
+  
