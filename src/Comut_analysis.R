@@ -37,7 +37,7 @@ createComut(sub,dis=0)%>%
   #geom_point(aes(size = number_1_and_2), shape = 0, color = "#374E55FF") +
   scale_color_gradient2(high =  "#4DBBD5FF", low = "#E64B35FF", mid = "grey",
                         midpoint = 50,
-                        name= "Fraction of cases\n(Gene 1 > Gene2)") +
+                        name= "Fraction of cases\n(VAF1 > VAF2)") +
   scale_size(range = c(1,10), name= "Number of\nco-occurences", breaks = c(1,2,5,10)) +
   #theme_cowplot() +
   my_theme()+
@@ -79,5 +79,5 @@ df.filtered.c1d1 %>%
   unique%>%
   ggplot(aes(x=ppm1d,group=factor(nom),fill=factor(nom)))+
   geom_bar(stat="count",position="stack")+
-  scale_fill_manual(values=scales::seq_gradient_pal(high = "#E64B35FF", low = "#4DBBD5FF",space="Lab")(seq(0,1,length.out=8)))+
+  scale_fill_manual(values=scales::seq_gradient_pal(high = "#E64B35FF", low = "#4DBBD5FF",space="Lab")(seq(0,1,length.out=8)),name="No. of mutations")+
   my_theme()

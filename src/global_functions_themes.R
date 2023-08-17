@@ -30,6 +30,9 @@ my_theme <- function(base_size=12, base_family="Roboto") {
    ))
 }
 
+my_theme2 <- function(base_size=12, base_family="Roboto") {
+   (theme_minimal(base_size=base_size, base_family=base_family))
+}
 
 ##Percent function
 percent <- function(x, digits = 0, format = "f", ...) {

@@ -40,6 +40,12 @@ source("src/global_functions_themes.R")
 ##interesting gene groups
 source("src/genegroup_definitions.R")
 
+##clinical data
+load("data/interim/clin.RData")
+
+##filtered mutation data
+load('data/interim/seqdata_filtered.RData')
+
 ##df preparation
 df %>% mutate(gene_group =  ifelse(is.element(Gene,tp53_genes),"TP53",
                                    ifelse(is.element(Gene,hrd_genes),"HRD",
@@ -67,6 +73,13 @@ df %>%
   filter(Visite == "C1D1")%>%
   dplyr::select(all_of(variables)) %>%
   mutate(cfID=paste(Patient.ID,position,sep="_")) -> df.cf_wb
+
+#df.filtered.c1d1 %>% 
+#  filter(Patient.ID %in% (df.material %>% filter(c1d1_cf==1&c1d1_wb==1) %>% .$Patient.ID))%>%
+#  filter(tag == "true",TVAF >=0.01)
+#  dplyr::select(all_of(variables)) %>%
+#  mutate(cfID=paste(Patient.ID,position,sep="_")) -> df.cf_wb
+
 
 #Mutations to work with
 df.cf %>% 
@@ -119,14 +132,15 @@ df.cf_wb %>%
             y = "TVAF.x", 
             x = "TVAF.y", 
             add = "reg.line", 
-            #conf.int = TRUE, 
+            conf.int = TRUE, 
             cor.coef = TRUE, 
             cor.method = "pearson",
             size=1,
             xlab = "cfDNA VAF", 
             ylab = "whole-blood VAF")+
-  scale_y_log10()+
-  scale_x_log10()->p.cfDNACor
+  scale_y_log10(limits=c(0.001,0.5))+
+  scale_x_log10(limits=c(0.001,0.5))+
+  my_theme()->p.cfDNACor
 p.cfDNACor
 
 png("output/figures/p.cf.wb.png",width=4, height=4,units="in",res=500,type="cairo")
@@ -134,19 +148,48 @@ p.cfDNACor
 dev.off()
 
 
-#####  Plot that shows VAF WB vs VAF ctDNA including color for group of mutation####
+###Correlation plot for all mutations found in cfDNA and WB
 full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in% Patmut_all),by="cfID") %>% 
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0.001,TVAF.y))%>%
   mutate(TVAF.x = ifelse(is.na(TVAF.x),0.001,TVAF.x))%>%
   filter(TR2.x>9|TR2.y>9)%>%
+  filter(TVAF.y>=0.008|TVAF.x>=0.008)%>%
+  filter(TVAF.y > 0.1*TVAF.x,TVAF.y>0.001)%>%
   mutate(tag = ifelse(is.na(tag.x),
                       ifelse(is.na(tag.y),
                              "not tagged",
                              as.character(tag.y)),
                       as.character(tag.x)))%>%
   mutate(gene_group = ifelse(is.na(gene_group.x),gene_group.y,gene_group.x))%>%
+  ggscatter(., 
+            y = "TVAF.y", 
+            x = "TVAF.x", 
+            add = "reg.line", 
+            conf.int = TRUE, 
+            cor.coef = TRUE, 
+            cor.method = "pearson",
+            size=1,
+            xlab = "cfDNA VAF", 
+            ylab = "whole-blood VAF")+
+  scale_y_log10(limits=c(0.001,0.5))+
+  scale_x_log10(limits=c(0.001,0.5))->p.cfDNACor
+p.cfDNACor
+
+#####  Plot that shows VAF WB vs VAF ctDNA including color for group of mutation####
+full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in% Patmut_all),by="cfID") %>% 
+  mutate(TVAF.y = ifelse(is.na(TVAF.y),0.001,TVAF.y))%>%
+  mutate(TVAF.x = ifelse(is.na(TVAF.x),0.001,TVAF.x))%>%
+  filter(TR2.x>9|TR2.y>9)%>%
+  filter(TVAF.y+TVAF.x>=0.008)%>%
+  mutate(tag = ifelse(is.na(tag.x),
+                      ifelse(is.na(tag.y),
+                             "not tagged",
+                             as.character(tag.y)),
+                      as.character(tag.x)))%>%
+  mutate(gene_group = ifelse(is.na(gene_group.x),gene_group.y,gene_group.x))%>%
+  mutate(compartment = ifelse(TVAF.x > TVAF.y*5,"cf","wb"))%>%
   ggplot(aes(x=TVAF.x,y=TVAF.y,
-             color=gene_group,
+             color=gene_group
              #shape=ExonicFunc.x
              )) +
   geom_point(size=2)+
@@ -157,11 +200,48 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
   scale_color_npg(name="Gene group",labels=c("CH genes","HRD genes","other myeloid genes","TP53"))+
   ylab("whole blood VAF")+
   xlab("cfDNA VAF")+
-  theme_minimal()->p.cf.corr
+  my_theme2() -> p.cf.corr
 p.cf.corr
 
-png("output/figures/p.cf.corr.all.png",width=8, height=6,units="in",res=500,type="cairo")
+png("output/figures/p.cf.corr.all.png",width=6.5, height=5,units="in",res=500,type="cairo")
 p.cf.corr
+dev.off()
+
+### Mutationsspectrum of mutations of other than hematopoietic origin
+
+full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in% Patmut_all),by="cfID") %>% 
+  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y))%>%
+  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x))%>%
+  filter(TR2.x>9|TR2.y>9)%>%
+  filter(TVAF.y+TVAF.x>=0.008)%>%
+  mutate(tag = ifelse(is.na(tag.x),
+                      ifelse(is.na(tag.y),
+                             "not tagged",
+                             as.character(tag.y)),
+                      as.character(tag.x)))%>%
+  mutate(gene_group = ifelse(is.na(gene_group.x),gene_group.y,gene_group.x))%>%
+  mutate(Gene = ifelse(is.na(Gene.x),Gene.y,Gene.x))%>%
+  mutate(compartment = ifelse(TVAF.x > TVAF.y*5,"cf","wb"))%>%
+  filter(compartment == "cf")%>%
+  dplyr::select(gene_group) %>% 
+  table %>% 
+  data.frame %>%
+  ggplot(aes(x=reorder(gene_group, Freq), y=Freq, fill=gene_group)) +
+  geom_bar(stat="identity", width=0.6, position = "stack")+
+  #geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
+  xlab("")+
+  scale_y_continuous(position = "right")+
+  ylab("No. of mutations") +
+  scale_fill_npg(name="Origin",labels=c("cf" = "other", "wb" = "hematopoietic"))+
+  my_theme() +
+  theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35),
+        axis.ticks.y = element_blank())+
+  coord_flip() -> p.mutprev_cf
+p.mutprev_cf
+
+
+png("output/figures/p.cf_only.mutprev.png",width=5, height=3,units="in",res=500,type="cairo")
+p.mutprev_cf
 dev.off()
 
 #####   Mutationspectrum for mutations in WB and cf only mutations by group------------------
@@ -169,13 +249,14 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y))%>%
   mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x))%>%
   filter(TR2.x>9|TR2.y>9)%>%
+  filter(TVAF.y+TVAF.x>=0.008)%>%
   mutate(tag = ifelse(is.na(tag.x),
                       ifelse(is.na(tag.y),
                              "not tagged",
                              as.character(tag.y)),
                       as.character(tag.x)))%>%
   mutate(gene_group = ifelse(is.na(gene_group.x),gene_group.y,gene_group.x))%>%
-  mutate(compartment = ifelse(TVAF.x > TVAF.y*10,"cf","wb"))%>%
+  mutate(compartment = ifelse(TVAF.x > TVAF.y*5,"cf","wb"))%>%
   dplyr::select(gene_group, compartment) %>% 
   table %>% 
   data.frame %>%
@@ -203,13 +284,14 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y))%>%
   mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x))%>%
   filter(TR2.x>9|TR2.y>9)%>%
+  filter(TVAF.y+TVAF.x>=0.008)%>%
   mutate(tag = ifelse(is.na(tag.x),
                       ifelse(is.na(tag.y),
                              "not tagged",
                              as.character(tag.y)),
                       as.character(tag.x)))%>%
   mutate(gene_group = ifelse(is.na(gene_group.x),gene_group.y,gene_group.x))%>%
-  mutate(compartment = ifelse(TVAF.x > TVAF.y*10,"cf","wb"))%>%
+  mutate(compartment = ifelse(TVAF.x > TVAF.y*5,"cf","wb"))%>%
   dplyr::select(gene_group, compartment) %>% table
 
 ### Mutationspectrum cf vs wb by gene 
@@ -217,6 +299,7 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y))%>%
   mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x))%>%
   filter(TR2.x>9|TR2.y>9)%>%
+  filter(TVAF.y+TVAF.x>=0.008)%>%
   mutate(tag = ifelse(is.na(tag.x),
                       ifelse(is.na(tag.y),
                              "not tagged",
@@ -244,17 +327,43 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
                                  hjust=1,
                                  vjust=0.35,
                                  face="italic"),
-        axis.ticks.y = element_blank())+
+        axis.ticks.y = element_blank(),
+        legend.position = c(0.8,0.2))+
   coord_flip() -> p.mutprev_all
 p.mutprev_all
 
 
-png("output/figures/p.cf.mutprev_all.png",width=6, height=6,units="in",res=500,type="cairo")
+png("output/figures/p.cf.mutprev_all.png",width=4, height=6,units="in",res=500,type="cairo")
 p.mutprev_all
 dev.off()
 
-################## 
-
+################## Correlation of cfDNA VAF with tumorburden and CA125
+library(GGally)
+full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in% Patmut_all),by="cfID") %>% 
+  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y))%>%
+  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x))%>%
+  filter(TR2.x>9|TR2.y>9)%>%
+  mutate(tag = ifelse(is.na(tag.x),
+                      ifelse(is.na(tag.y),
+                             "not tagged",
+                             as.character(tag.y)),
+                      as.character(tag.x)))%>%
+  mutate(gene_group = ifelse(is.na(gene_group.x),gene_group.y,gene_group.x))%>%
+  mutate(compartment = ifelse(TVAF.x > TVAF.y*10,"cf","wb"))%>%
+  filter(gene_group=="TP53")%>%
+  filter(compartment=="cf")%>%
+  group_by(Patient.ID.x)%>%
+  mutate(maxVAF = max(TVAF.x))%>%
+  data.frame%>%
+  filter(TVAF.x == maxVAF)%>%
+  mutate(Patient.ID = Patient.ID.x,
+         TP53_mut = AAChange.x,
+         VAF_TP53 = log10(TVAF.x))%>%
+  dplyr::select(Patient.ID,TP53_mut,VAF_TP53)%>%
+  left_join(.,df.clin,by=c("Patient.ID"))%>%
+  mutate(logCA=log10(CA125))%>%
+  dplyr::select(logCA,TumorBurden_baseline,VAF_TP53)%>%
+  ggpairs()
 
 
 ##Lolliplots for TP53 mutations
@@ -287,7 +396,7 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
 
 df.tp53_wb <- df.tp53 %>% filter(tag=="true")%>%makeMAF
 df.tp53_cf <- df.tp53 %>% filter(tag=="cf-only")%>%makeMAF
-  
+
 plot.options <- g3Lollipop.theme(theme.name = "cbioportal",
                                  title.text = "TP53 CH",
                                  y.axis.label = "# of Mutations")

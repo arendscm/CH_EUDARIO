@@ -184,18 +184,21 @@ full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,
   melt.data.frame(measure.vars = c("fitness_platinum","fitness_maintenance"))%>%
   filter(Gene %in% c("CHEK2","PPM1D","DNMT3A","TP53","TET2"))%>%
   ggplot(aes(x=variable,y=value,color=Gene))+
-  geom_boxplot(color="grey")+
+  geom_boxplot(color="darkgrey")+
   geom_point()+
   geom_line(aes(group=Patmut),alpha=0.5)+
   scale_x_discrete(labels=c("C","M"),name="Therapy")+
-  scale_y_continuous(name="Fitness",limits=c(-15,15))+
+  scale_y_continuous(name="Fitness",limits=c(-10,15))+
   scale_color_npg()+
   facet_grid(~Gene)+
-  theme_minimal() +
-  theme(strip.text = element_text(face = "italic"))-> p.fitness_CvsM
+  my_theme() +
+  theme(strip.text = element_text(face = "italic"),
+        legend.position = "none",
+        axis.line.x = element_blank(),
+        axis.ticks.x = element_blank())-> p.fitness_CvsM
+p.fitness_CvsM
 
-
-png("output/figures/p.cf.serial_CvsM.png",width=6, height=4,units="in",res=500,type="cairo")
+png("output/figures/p.cf.serial_CvsM.png",width=6, height=3,units="in",res=500,type="cairo")
 p.fitness_CvsM
 dev.off()
 
@@ -210,7 +213,7 @@ full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,
   dplyr::select(-fitness.x,-fitness.y)%>%
   mutate(Patmut = paste(Patient.ID,position,sep="_"))%>%
   melt.data.frame(measure.vars = c("fitness_platinum","fitness_maintenance"))%>%
-  filter(Gene %in% c("CHEK2","PPM1D","DNMT3A","TP53","TET2"))%>%
+  filter(Gene %in% c("TP53","PPM1D"))%>%
   ggboxplot(.,
               x = "variable",
               y = "value",
@@ -255,17 +258,19 @@ full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,
   data.frame %>%
   filter(size>7)%>%
   ggplot(aes(x=med.fit.plat,y=med.fit.maint,color=Gene))+
-  geom_point(aes(size=size),alpha = 1)+
-  geom_errorbar(aes(xmin=med.fit.plat-err.fit.plat,xmax=med.fit.plat+err.fit.plat),width=0.2)+
-  geom_errorbar(aes(ymin=med.fit.maint-err.fit.maint,ymax=med.fit.maint+err.fit.maint),width=0.2)+
-  scale_color_npg()+
   geom_abline(slope=1,intercept=0,linetype="dashed",alpha=0.8)+
-  scale_x_continuous(name="Mean fitness Chemotherapy",lim=c(-5,5))+
-  scale_y_continuous(name="Mean fitness maintenance",lim=c(-5,5))+
-  theme_minimal() -> p.scatter_CvsM
+  geom_point(aes(size=size),alpha = 1)+
+  geom_errorbar(aes(ymin=med.fit.maint-err.fit.maint,ymax=med.fit.maint+err.fit.maint),width=0.2)+
+  geom_errorbar(aes(xmin=med.fit.plat-err.fit.plat,xmax=med.fit.plat+err.fit.plat),width=0.2)+
+  scale_color_npg()+
+  scale_x_continuous(name="Mean fitness Chemotherapy",lim=c(-2.5,5))+
+  scale_y_continuous(name="Mean fitness maintenance",lim=c(-2.5,5))+
+  scale_size(name="No. of mutations")+
+  my_theme()+
+  theme(legend.text = element_text(face="italic"))-> p.scatter_CvsM
 
 
-png("output/figures/p.cf.scatter_CvsM.png",width=5, height=4,units="in",res=500,type="cairo")
+png("output/figures/p.cf.scatter_CvsM.png",width=4.5, height=3,units="in",res=500,type="cairo")
 p.scatter_CvsM
 dev.off()
 

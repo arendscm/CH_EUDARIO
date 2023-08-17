@@ -72,6 +72,54 @@ png("output/figures/sc/nom.png",width=4, height=3,units="in",res=500,type="cairo
 p.nom
 dev.off()
 
+###### Oncoplot for mutations at d0
+
+maf<-full_join(SC_registry %>% 
+                 filter(Visite==1) %>% 
+                 mutate(Sample_ID=Patient.ID, Tumor_Sample_Barcode=Patient.ID) %>% 
+                 dplyr::select(Sample_ID,Tumor_Sample_Barcode),makeMAF(df.filtered.newsamples%>% 
+                                                                         mutate(Gene=ifelse(Gene=="U2AF1;U2AF1L5","U2AF1",Gene))%>%
+                                                                         filter(tag=="true",TVAF >= 0.01))) 
+
+
+df.maf <- read.maf(maf)
+
+vc_cols = pal_npg("nrc")(8)
+names(vc_cols) = c(
+  'Frame_Shift_Del',
+  'Missense_Mutation',
+  'Nonsense_Mutation',
+  'Multi_Hit',
+  'Frame_Shift_Ins',
+  'In_Frame_Ins',
+  'Splice_Site',
+  'In_Frame_Del'
+)
+
+#This is the final colored list. Names of the list elements should match those in clinicalFeatures arguments 
+
+pw1<-data.frame(ch_genes_without_HRD,"CH")
+names(pw1) <- c("Genes","Pathway")
+pw2<-data.frame(hrd_genes,"HRD")
+names(pw2) <- c("Genes","Pathway")
+Group <- rbind(pw1,pw2)
+
+
+png("output/figures/oncoplot.png",width=12, height=8,units="in",res=500,type="cairo")
+
+oncoplot(df.maf,
+         top = 22,
+         colors = vc_cols,
+         drawColBar = TRUE,
+         topBarData = maf %>% group_by(Tumor_Sample_Barcode) %>% mutate(nom=n())%>% data.frame %>% mutate('No. of mutations' = nom) %>% dplyr::select(Tumor_Sample_Barcode,'No. of mutations') %>% unique,
+         removeNonMutated = FALSE,
+         annotationColor = anno_cols,
+         pathways = Group,
+         sortByAnnotation = TRUE,
+         annotationOrder = c("Yes","No","NA"),
+         anno_height = 1.5) 
+
+dev.off()
 
 
 ##PLOTs

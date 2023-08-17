@@ -40,9 +40,11 @@ clin<- df.clin %>%
               mutate(Sample_ID = Patient.ID,
                      Tumor_Sample_Barcode = Patient.ID,
                      Age = Age_TreatmentStartEUDARIO,
-                     Arm = ifelse(Arm==" A","A",
-                                  ifelse(Arm==" B","B","C")))%>%
-              dplyr::select(Sample_ID,Tumor_Sample_Barcode,Age,Arm,PriorPARPi,Number_PreviousLines )
+                     "Treatment Arm" = ifelse(Arm==" A","A",
+                                  ifelse(Arm==" B","B","C")),
+                     "No of previous lines" = no_prev_lines_binom,
+                     "Prior PARPi" = factor(PriorPARPi,levels = c("Yes","No")))%>%
+              dplyr::select(Sample_ID,Tumor_Sample_Barcode,Age,'Treatment Arm','Prior PARPi','No of previous lines')
 
 df.maf <- read.maf(maf,clinicalData = clin)
 
@@ -58,27 +60,29 @@ names(vc_cols) = c(
   'In_Frame_Del'
 )
 
-Arm_colors=pal_npg("nrc")(3)
+Arm_colors=pal_npg("nrc")(6)[4:6]
 names(Arm_colors)=c('A','B','C')
 
 PARPi_colors = pal_npg("nrc")(3)
 names(PARPi_colors)=c( "Yes", "No", NA )
 
-Lines_colors=scales::seq_gradient_pal(high = "#E64B35FF", low = "#4DBBD5FF",space="Lab")(seq(0,1,length.out=5))
-names(Lines_colors)=c(1,2,3,4,5)
+Lines_colors=pal_npg("nrc")(4)[c(2,3)]
+names(Lines_colors)=c("1",">1")
 
 
 #This is the final colored list. Names of the list elements should match those in clinicalFeatures arguments 
-anno_cols = list(Arm = Arm_colors, PriorPARPi = PARPi_colors, Number_PreviousLines = Lines_colors)
+anno_cols = list('Treatment_Arm' = Arm_colors, 'Prior_PARPi' = PARPi_colors, 'No_of_previous_lines' = Lines_colors)
 
 pw1<-data.frame(ch_genes_without_HRD,"CH")
 names(pw1) <- c("Genes","Pathway")
-pw2<-data.frame(hrd_genes,"HRD")
+pw2<-data.frame(intersect(hrd_genes,ch_genes),"CH/HR")
 names(pw2) <- c("Genes","Pathway")
-Group <- rbind(pw1,pw2)
+pw3<-data.frame(setdiff(hrd_genes,ch_genes),"HR")
+names(pw3) <- c("Genes","Pathway")
+Group <- rbind(pw1,pw2,pw3)
 
 
-png("output/figures/oncoplot.png",width=12, height=8,units="in",res=500,type="cairo")
+png("output/figures/oncoplot2.png",width=12, height=8,units="in",res=500,type="cairo")
 
 oncoplot(df.maf,
          top = 22,
@@ -86,7 +90,7 @@ oncoplot(df.maf,
          drawColBar = TRUE,
          topBarData = df.clin %>% mutate(Tumor_Sample_Barcode = Patient.ID, 'No. of mutations' = nom) %>% dplyr::select(Tumor_Sample_Barcode,'No. of mutations'),
          removeNonMutated = FALSE,
-         clinicalFeatures = c('PriorPARPi','Number_PreviousLines','Arm'),
+         clinicalFeatures = c('Prior_PARPi','No_of_previous_lines','Treatment_Arm'),
          annotationColor = anno_cols,
          pathways = Group,
          sortByAnnotation = TRUE,

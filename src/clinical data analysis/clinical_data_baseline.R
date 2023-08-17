@@ -40,16 +40,16 @@ my_vars_baseline=c("Age_TreatmentStartEUDARIO",
                    "TumorBurden_baseline",
                    "SecondaryMalignancy",
                    "LVEF_C1D1",
-                   "BRCA1",
-                   "brca1_germline",
-                   "BRCA2",
-                   "brca2_germline",
+                   "BRCA_status",
+                   "BRCA_binom",
                    "Number_PreviousLines",
+                   "no_prev_lines_binom",
                    "Number_PreviousPlatinumLines",
                    "No_Platinum_lines_binom",
                    "Type_PreviousTherapy",
                    "PriorPARPi",
                    "Duration_PriorPARPi",
+                   "Duration_PARPi_level",
                    "thr",
                    "hemoglobin",
                    "wbc",
@@ -63,6 +63,7 @@ cat_vars_baseline=c("Arm",
                     "SecondaryMalignancy",
                    "ECOG",
                    "Type_PreviousTherapy",
+                   "no_prev_lines_binom",
                    "PriorPARPi",
                    "No_Platinum_lines_binom")
 
@@ -86,7 +87,7 @@ write.xlsx(baseline.csv, file = "output/tables/baseline.xlsx",sheetName = "basel
 
 
 ######### Plot age distribution #######################
-df.clin %>% mutate(nom = ifelse(nom==0,"0",ifelse(nom==1,"1",">1")))%>%
+df.clin %>% mutate(nom = ifelse(nom_CH==0,"0",ifelse(nom_CH==1,"1",">1")))%>%
   mutate(nom = factor(nom,levels=c("0","1",">1")))%>%
   ggplot(aes(x = Age_TreatmentStartEUDARIO)) + 
   geom_histogram(aes(y=..count..,fill=as.factor(nom)),size=1,position="stack",binwidth=8)  +
@@ -97,7 +98,7 @@ df.clin %>% mutate(nom = ifelse(nom==0,"0",ifelse(nom==1,"1",">1")))%>%
   my_theme()  -> p.agedens 
 p.agedens
 
-png("output/figures/agedens.png",width=5, height=4,units="in",res=500,type="cairo")
+png("output/figures/agedens.png",width=4, height=3,units="in",res=500,type="cairo")
 p.agedens
 dev.off()
 

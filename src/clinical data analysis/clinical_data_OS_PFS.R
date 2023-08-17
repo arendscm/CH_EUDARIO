@@ -34,8 +34,7 @@ source("src/global_functions_themes.R")
 
 ########## Load clinical data  ##########
 load("data/interim/clin.RData")
-df.clin %>% mutate(brca_germline=brca1_germline+brca2_germline) %>%
-  mutate(age_median = ifelse(Age_TreatmentStartEUDARIO >= 62,">=62","<62"))-> df.surv
+df.clin  -> df.surv
 
 ########## Response assessment ######################
 my_vars_response=c("Response_best","response_binom","response_binom2","response_binom3")
@@ -85,10 +84,16 @@ covariates = c("Age_TreatmentStartEUDARIO","ECOG_binom","PriorPARPi","No_Platinu
 
 finalfit(df.surv, dependent="Surv(OS_days,OS_event)",explanatory=covariates)
 
-fit.coxph <- coxph(Surv(time = df.surv$OS_days, event = df.surv$OS_event) ~ CH + Arm + Age_TreatmentStartEUDARIO+ TumorBurden_baseline+ ECOG_binom + Number_PreviousLines + SecondaryMalignancy + brca_germline + PriorPARPi, 
+fit.coxph <- coxph(Surv(time = df.surv$OS_days, event = df.surv$OS_event) ~ CH + Arm + Age_TreatmentStartEUDARIO+ no_prev_lines_binom + BRCA_status + PriorPARPi, 
                    data = df.surv)
 summary(fit.coxph)
 forest_model(fit.coxph)
+
+
+png("output/figures/OS_multivariate.png",width=12, height=5,units="in",res=500,type="cairo")
+forest_model(fit.coxph)
+dev.off()
+
 
 ######## Crude PFS analysis #################
 
@@ -124,7 +129,11 @@ covariates_01 = c("ECOG_binom","PriorPARPi","TumorBurden_baseline","CH")
 finalfit(df.surv, dependent="Surv(PFS_days,PFS_event)",explanatory=covariates_01)
 
 
-fit.coxph <- coxph(Surv(time = df.surv$PFS_days, event = df.surv$PFS_event) ~ CH + strata(Arm) + Age_TreatmentStartEUDARIO+ TumorBurden_baseline+ ECOG_binom + Number_PreviousLines +PriorPARPi +SecondaryMalignancy+brca_germline, 
+fit.coxph <- coxph(Surv(time = df.surv$PFS_days, event = df.surv$PFS_event) ~ CH + Arm + Age_TreatmentStartEUDARIO+ no_prev_lines_binom + BRCA_binom + PriorPARPi, 
                    data = df.surv)
 summary(fit.coxph)
 forest_model(fit.coxph)
+
+png("output/figures/PFS_multivariate.png",width=12, height=5,units="in",res=500,type="cairo")
+forest_model(fit.coxph)
+dev.off()

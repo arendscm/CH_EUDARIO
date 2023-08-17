@@ -44,7 +44,6 @@ source("src/global_functions_themes.R")
 ##relevant variables
 variables <- c("Patient.ID","Sample_orig","mutID","position","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "GeneDetail", "ExonicFunc", "AAChange", "cytoBand","readDepth", "TR1", "TR1_plus", "TR1_minus", "TR2", "TR2_plus", "TR2_minus", "TVAF", "AF", "avsnp150","cosmic92_coding","snp","mutFreq","p.binom","n.mut","n.material","sum_cf","sum_wb","Material","tag", "Patmut")
 
-
 ####### serial analysis in patients with 2 timepoints c1d1 and c7d1
 df %>% 
   filter(is.na(replicate))%>%
@@ -54,7 +53,6 @@ df %>%
   filter(Visite=="C1D1"|Visite=="C7D1")%>%
   mutate(timepoint = ifelse(Visite == "C1D1",0,
                             ifelse(Visite=="C7D1",tC7D1,NA)))-> df.cf_serial
-
 
 df.cf_serial %>% 
   group_by(Patmut) %>%
@@ -147,7 +145,7 @@ df.cf_c1c7 <- full_join(df.cf_c1d1,df.cf_c7d1,by=c("Patient.ID","Gene","AAChange
 
 
 
-###direct comparison of clone fitnesss c1c7 vs c7eot only in patients which had 5 or 6 cycles of Platinum 
+###dynamics of TP53 cf DNA mutations C1-C7
 df.cf_c1c7 %>%
   filter(Patient.ID %in% (df.clin %>% filter(Number_ChemotherapyCycles > 5))$Patient.ID)%>%
   mutate(Patmut = paste(Patient.ID,position,sep="_"))%>%
@@ -172,6 +170,7 @@ p.growth
 ###correlation with response
 
 df.cf_c1c7 %>%
+  filter(variable=="relvaf2")%>%
   filter(Patient.ID %in% (df.clin %>% filter(Number_ChemotherapyCycles > 5))$Patient.ID)%>%
   mutate(Patmut = paste(Patient.ID,position,sep="_"))%>%
   mutate(timepoint = ifelse(variable=="relvaf1",0,timepoint))%>%
@@ -181,7 +180,8 @@ df.cf_c1c7 %>%
                            ifelse(vaf_c7d1/vaf_c1d1<0.1,-1,
                                   ifelse(vaf_c7d1/vaf_c1d1>10,1,0))))%>%
   filter(timepoint.y>50)%>%
-  filter(Gene %in% c("TP53","NF1","CDK12","EMSY"))%>%
+  filter(Gene %in% c("TP53"))%>%
+  #filter(Gene %in% c("TP53","NF1","CDK12","EMSY","BRCA1","BRCA2"))%>%
   group_by(Patient.ID) %>%
   mutate(category_max = max(category))%>%
   data.frame %>% 
@@ -192,12 +192,14 @@ df.cf_c1c7 %>%
 
 ##assessing best response
 df.clin_tp53 %>% dplyr::select(category_max,Response_best)%>% table 
+df.clin_tp53 %>% dplyr::select(category_max,response_TA2)%>% table 
 
 df.clin_tp53 %>% 
   dplyr::select(category_max,Response_best)%>% 
   table%>%
   data.frame%>%
   ggplot(aes(x=category_max,y=Freq,fill=Response_best))+geom_bar(stat="identity")
+
 ##assessing PFS
 df.clin_tp53 -> df.surv
 surv_obj <- Surv(time = df.surv$PFS_days, event = df.surv$PFS_event)
@@ -245,14 +247,98 @@ p.os
 library(GGally)
 
 df.cf_c1c7 %>% 
-  filter(is.element(Gene,c("TP53")))%>%
+  filter(variable=="relvaf2")%>%
+  #filter(is.element(Gene,c("TP53","NF1","CDK12","BRCA1","BRCA2","EMSY")))%>%
   group_by(Patient.ID)%>%
   mutate(maxVAF = max(vaf_c1d1))%>%
   data.frame%>%
   filter(vaf_c1d1==maxVAF)%>%
   left_join(.,df.clin %>% dplyr::select(Patient.ID,CA125,TumorBurden_baseline),by="Patient.ID") %>% 
   mutate(logVAF = log10(vaf_c1d1),
-         logCA = log10(CA125))%>%
-  dplyr::select(logCA,TumorBurden_baseline,logVAF) %>% 
-  ggpairs(.)
+         logCA = log10(CA125),
+         logTumor = log10(TumorBurden_baseline))%>%
+  dplyr::select(logCA,vaf_c1d1,CA125,logVAF,TumorBurden_baseline,logTumor) %>% 
+  ggscatter(., 
+            y = "logCA", 
+            x = "logVAF", 
+            add = "reg.line", 
+            #conf.int = TRUE, 
+            cor.coef = TRUE, 
+            cor.method = "pearson",
+            size=1
+            #xlab = "logVAF TP53", 
+            #ylab = "Tumor Burden"
+           )
+
+###exploratory
+
+
+df.cf_c1c7 %>%
+  filter(variable=="relvaf2")%>%
+  mutate(Patmut = paste(Patient.ID,position))%>%
+  filter(Gene %in% c("TP53"))%>%
+  left_join(.,df.clin,by="Patient.ID")%>%
+  mutate(VAFchange= log10(vaf_c7d1/vaf_c1d1))%>%
+  ggplot() + 
+  #geom_point(aes(x=Response_best,y=VAFchange,color=Gene,group=Patient.ID),size=1,na.rm=FALSE) + 
+  geom_boxplot(aes(x=response_TA2,y=VAFchange)) +
+  scale_color_igv()+
+  labs(x="Best response",y="log(VAF change)",colour="Mutated Gene") +
+  theme_minimal() -> p.cf.serial
+
+
+df.cf_c1c7 %>%
+  filter(variable=="relvaf2")%>%
+  mutate(Patmut = paste(Patient.ID,position))%>%
+  filter(Gene %in% c("TP53"))%>%
+  mutate(VAFchange= log10(vaf_c7d1/vaf_c1d1))%>%
+  group_by(Patient.ID)%>%
+  mutate(VAFchange_max=max(VAFchange))%>%
+  data.frame%>%
+  filter(VAFchange == VAFchange_max)%>%
+  left_join(.,df.clin,by="Patient.ID")%>%
+  mutate(cf_dyn = ifelse(VAFchange_max < -0.5,-1,
+                         ifelse(VAFchange_max > 1,1,0)))-> df.surv
+
+surv_obj <- Surv(time = df.surv$PFS_days, event = df.surv$PFS_event)
+fit.km <- survfit(surv_obj ~ cf_dyn, data = df.surv)
+
+df.surv %>% 
+  ggsurvplot(fit.km, 
+             data = ., 
+             pval = TRUE,
+             #conf.int = TRUE,
+             palette = pal_npg("nrc")(3),
+             risk.table=TRUE,
+             tables.height = 0.3,
+             ylab = "Progression-free Survival",
+             xlab = "Time in Days",
+             #legend.title = "CH status",
+             #legend.labs = c("negative", "positive")
+  ) -> p.pfs
+
+p.pfs
+
+
+
+surv_obj <- Surv(time = df.surv$OS_days, event = df.surv$OS_event)
+fit.km <- survfit(surv_obj ~ cf_dyn, data = df.surv)
+
+df.surv %>% 
+  ggsurvplot(fit.km, 
+             data = ., 
+             pval = TRUE,
+             #conf.int = TRUE,
+             palette = pal_npg("nrc")(3),
+             risk.table=TRUE,
+             tables.height = 0.3,
+             ylab = "Overall Survival",
+             xlab = "Time in Days",
+             #legend.title = "CH status",
+             #legend.labs = c("negative", "positive")
+  ) -> p.os
+
+p.os
+
+
   

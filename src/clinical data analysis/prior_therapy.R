@@ -25,6 +25,7 @@ library(tableone)
 library(ggplot2)
 library(ggsci)
 library(ggpubr)
+library(ggmosaic)
 
 ########   Load IDs    ########
 source("src/material_table.R")
@@ -117,14 +118,17 @@ dev.off()
 
 my_vars_baseline=c("Number_PreviousLines",
                    "Number_PreviousPlatinumLines",
+                   "no_prev_lines_binom",
                    "No_Platinum_lines_binom",
                    "Type_PreviousTherapy",
                    "PriorPARPi",
                    "Duration_PriorPARPi",
-                   "Age_TreatmentStartEUDARIO")
+                   "Duration_PARPi_level")
 
 cat_vars_baseline=c("Type_PreviousTherapy",
                     "PriorPARPi",
+                    "no_prev_lines_binom",
+                    "Duration_PARPi_level",
                     "No_Platinum_lines_binom")
 
 cont_vars_baseline = setdiff(my_vars_baseline,cat_vars_baseline)
@@ -141,12 +145,6 @@ df.clin %>% CreateTableOne(strata = "CH",
         missing=TRUE,
         showAllLevels=TRUE,
         quote=FALSE)
-
-
-####### logistic regression ########################
-
-log.reg <- glm(CH ~ Age_TreatmentStartEUDARIO  +PriorPARPi + Number_PreviousLines, family="binomial",data=df.clin)
-summary(log.reg)
 
 
 ##### compare number of mutations as a function of prior PARPi
@@ -187,10 +185,11 @@ dev.off()
 
 ####compare median VAFS as a function of prior PARPi #########################
 df.clin %>%
+  mutate(no_lines = cut(Number_PreviousLines,breaks=c(-Inf,0,1,2,3,Inf)))%>%
   filter(CH==1)%>%
   ggboxplot(., 
-            x = "Number_PreviousLines",
-            y = "maxVAF",
+            x = "no_lines",
+            y = "maxVAF_CH",
             combine = TRUE,
             xlab = "Prior PARPi treatment",
             ylab = "Variant allele frequency",
@@ -209,4 +208,124 @@ df.clin %>%
   theme_minimal() + 
   theme(axis.title.x = element_blank()) ->p.VAF_boxplot
 
-####compare VAFS as a function of prior PARPi time#########################
+
+#####Duration of PARPi Treatment and No_previous lines vs clonesize (discrete)
+
+my_vars_baseline=c("Number_PreviousLines",
+                   "Number_PreviousPlatinumLines",
+                   "no_prev_lines_binom",
+                   "No_Platinum_lines_binom",
+                   "Type_PreviousTherapy",
+                   "PriorPARPi",
+                   "Duration_PriorPARPi",
+                   "Duration_PARPi_level",
+                   "Age_TreatmentStartEUDARIO")
+
+cat_vars_baseline=c("PriorPARPi",
+                    "Duration_PARPi_level",
+                    "No_Platinum_lines_binom")
+
+cont_vars_baseline = setdiff(my_vars_baseline,cat_vars_baseline)
+
+df.clin %>% CreateTableOne(strata = "CH_category",
+                           vars=c(my_vars_baseline),
+                           factorVars = cat_vars_baseline,
+                           includeNA=FALSE,
+                           #addOverall = TRUE,
+                           data=.) %>% 
+  print(., 
+        nonnormal=cont_vars_baseline,
+        exact=cat_vars_baseline,
+        missing=TRUE,
+        showAllLevels=TRUE,
+        quote=FALSE)
+
+##Clonesize vs no prev lines
+df.clin %>%
+  ggplot(.) +
+  geom_mosaic(aes(x = product(CH_category, no_prev_lines_binom), fill=CH_category),alpha=1) + 
+  my_theme()+
+  xlab("No. of previous lines")+
+  ylab("CH clone size")+
+  theme(legend.position = "none")+
+  scale_fill_npg()-> p.mosaic1
+p.mosaic1
+
+png("output/figures/p.mosaic1.png",width=2.5, height=2.5,units="in",res=500,type="cairo")
+p.mosaic1
+dev.off()
+
+
+##Number of mutations vs previous lines
+df.clin %>%
+  mutate(nom_CH2 = cut(nom_CH,breaks=c(-Inf,0,1,2,Inf),labels=c("0","1","2",">2")))%>%
+  ggplot(.) +
+  geom_mosaic(aes(x = product(nom_CH2, no_prev_lines_binom), fill=nom_CH2),alpha=1) + 
+  my_theme()+
+  xlab("No. of previous lines")+
+  ylab("No. of mutations")+
+  theme(legend.position = "none")+
+  scale_fill_npg()-> p.mosaic2
+p.mosaic2
+
+png("output/figures/p.mosaic2.png",width=2.5, height=2.5,units="in",res=500,type="cairo")
+p.mosaic2
+dev.off()
+
+
+##Clonesize vs PARPi
+df.clin %>%
+  ggplot(.) +
+  geom_mosaic(aes(x = product(CH_category, PriorPARPi), fill=CH_category),alpha=1) + 
+  my_theme()+
+  xlab("Prior PARPi therapy")+
+  ylab("CH clone size")+
+  theme(legend.position = "none")+
+  scale_fill_npg()-> p.mosaic3
+p.mosaic3
+
+png("output/figures/p.mosaic3.png",width=2.5, height=2.5,units="in",res=500,type="cairo")
+p.mosaic3
+dev.off()
+
+##No. mutations vs PARPi
+df.clin %>%
+  mutate(nom_CH2 = cut(nom_CH,breaks=c(-Inf,0,1,2,Inf),labels=c("0","1","2",">2")))%>%
+  ggplot(.) +
+  geom_mosaic(aes(x = product(nom_CH2, PriorPARPi), fill=nom_CH2),alpha=1) + 
+  my_theme()+
+  xlab("Prior PARPi therapy")+
+  ylab("No. of mutations")+
+  theme(legend.position = "none")+
+  scale_fill_npg()-> p.mosaic4
+p.mosaic4
+
+png("output/figures/p.mosaic4.png",width=2.5, height=2.5,units="in",res=500,type="cairo")
+p.mosaic4
+dev.off()
+
+png("output/figures/p.mosaic.png",width=6, height=6,units="in",res=500,type="cairo")
+ggarrange(p.mosaic1,p.mosaic2,p.mosaic3,p.mosaic4)
+dev.off()
+
+####### logistic regression ########################
+
+##DTA mutations
+log.reg <- glm(DTA ~ age_dec + no_prev_lines_binom +Duration_PriorPARPi, family="binomial",data=df.clin %>% mutate(age_dec=Age_TreatmentStartEUDARIO/10))
+summary(log.reg)
+
+##odds ratios + 95%CI
+data.frame(OR=exp(summary(log.reg)$coefficients[,1]),
+           lCI=exp(summary(log.reg)$coefficients[,1]+ qnorm(0.025) * summary(log.reg)$coefficients[,2]),
+           uCI=exp(summary(log.reg)$coefficients[,1]+ qnorm(0.975) * summary(log.reg)$coefficients[,2]))
+
+##DDR mutations
+log.reg <- glm(DDR ~ age_dec + no_prev_lines_binom+ Duration_PriorPARPi, family="binomial",data=df.clin %>% mutate(age_dec=Age_TreatmentStartEUDARIO/10))
+summary(log.reg)
+
+##odds ratios + 95%CI
+data.frame(OR=exp(summary(log.reg)$coefficients[,1]),
+           lCI=exp(summary(log.reg)$coefficients[,1]+ qnorm(0.025) * summary(log.reg)$coefficients[,2]),
+           uCI=exp(summary(log.reg)$coefficients[,1]+ qnorm(0.975) * summary(log.reg)$coefficients[,2]))
+
+

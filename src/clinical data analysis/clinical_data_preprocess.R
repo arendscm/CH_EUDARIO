@@ -51,8 +51,11 @@ df.clin <- df.clin_orig %>%
          ECOG_binom = factor(ifelse(ECOG == 0,0,1)),
          TumorBurden_baseline = as.numeric(TumorBurden_baseline),
          LVEF_C1D1 = as.numeric(LVEF_C1D1),
-         No_Platinum_lines_binom = ifelse(Number_PreviousPlatinumLines>1,">1","1"),
+         No_Platinum_lines_binom = factor(ifelse(Number_PreviousPlatinumLines>1,">1","1"),levels=c("1",">1")),
+         no_prev_lines_binom = factor(ifelse(Number_PreviousLines == 1,"1",">1"),levels = c("1",">1")),
          Duration_PriorPARPi = ifelse(is.na(Duration_PriorPARPi),0,Duration_PriorPARPi),
+         Duration_PARPi_level = factor(ifelse(Duration_PriorPARPi == 0,"0",
+                                       ifelse(Duration_PriorPARPi<10,"<10 months",">10 months")),levels=c("0","<10 months",">10 months")),
          response_binom = ifelse(Response_best == "NAP",NA,
                                  ifelse(Response_best =="CR"|Response_best =="PR","CR or PR","SD or PD")),
          response_binom2 = ifelse(Response_best == "NAP",NA,
@@ -95,13 +98,37 @@ df.clin <- df.clin_orig %>%
                                                          filter(is.element(AE_consensus_term,c("allergic reaction"))&AE_18_severity>2)%>%
                                                          dplyr::select(patient_code)%>% 
                                                          unique)$patient_code),
+         ae_kidney_failure = is.element(Patient.ID,(df.ae %>%
+                                                                filter(is.element(AE_consensus_term,c("increased creatinine","renal insufficiency","kidney insufficiency")))%>%
+                                                                dplyr::select(patient_code)%>% 
+                                                                unique)$patient_code),
+         ae_transaminases = is.element(Patient.ID,(df.ae %>%
+                                                      filter(is.element(AE_consensus_term,c("increased transaminases")))%>%
+                                                      dplyr::select(patient_code)%>% 
+                                                      unique)$patient_code),
+         ae_bleeding = is.element(Patient.ID,(df.ae %>%
+                                                filter(is.element(AE_consensus_term,c("bleeding")))%>%
+                                                dplyr::select(patient_code)%>% 
+                                                unique)$patient_code)
          )%>%
   filter(is.element(Patient.ID,ids %>% filter(firstTimepoint_wb==1) %>%.$Patient.ID)) %>% #only patients with available seq data
   left_join(.,id.brca_germline, by="Patient.ID") %>% #add BRCA germline status
   left_join(.,id.brca_somatic, by="Patient.ID") %>% #add BRCA somatic muts
   left_join(.,id.hrd_germline, by="Patient.ID")%>%
-  mutate(HRD_germline = sign(brca1_germline+brca2_germline+hrd_germline))%>%
-  left_join(.,df.bc%>%mutate(Patient.ID = as.character(patient_code))%>%filter(cycle_day==" C1D1")%>%dplyr::select(Patient.ID,hemoglobin,thr,wbc,CA125))
+  mutate(HRD_germline = sign(brca1_germline+brca2_germline+hrd_germline),
+         brca_germline = sign(brca1_germline+brca2_germline),
+         BRCA1 = ifelse(BRCA1==" ",-1,
+                        ifelse(BRCA1==" wt",0,1)),
+         BRCA2 = ifelse(BRCA2==" ",-1,
+                        ifelse(BRCA2==" wt",0,1)))%>%
+  mutate(BRCA_status = ifelse(brca_germline ==1, "mut",
+                              ifelse(BRCA1==1|BRCA2==1,"mut",
+                                     ifelse(BRCA1==0&BRCA2==0,"wt","unknown"))),
+         BRCA_binom = ifelse(BRCA_status=="mut","mut","wt or unknown"))%>%
+  left_join(.,df.bc%>%
+              mutate(Patient.ID = as.character(patient_code))%>%
+              filter(cycle_day==" C1D1")%>%
+              dplyr::select(Patient.ID,hemoglobin,thr,wbc,CA125))
 
 ########## Join mutation data with clinical data ##########
 df.mut <- df.filtered.c1d1%>% 
@@ -110,14 +137,22 @@ df.mut <- df.filtered.c1d1%>%
   dplyr::select("Patient.ID","Sample", "Chr", "Start", "End", "Ref", "Alt", "Gene", "Func", "ExonicFunc", "AAChange","TR1","TR2","TVAF","cosmic92_coding") %>%
   mutate(CH = is.element(Gene,typical_ch_genes),
          HRD = is.element(Gene,hrd_genes),
-         DDR = is.element(Gene,ddr_genes))
+         DDR = is.element(Gene,ddr_genes))%>%
+  group_by(Patient.ID,CH)%>%
+  mutate(maxVAF_CH = max(TVAF))%>%
+  data.frame%>%
+  mutate(maxVAF_CH = ifelse(CH ==1, maxVAF_CH,0))%>%
+  group_by(Patient.ID)%>%
+  mutate(maxVAF_CH = max(maxVAF_CH))%>%
+  data.frame
 
 #create dummies
 df.mut %>% 
   mutate(Gene = ifelse(Gene == "U2AF1;U2AF1L5","U2AF1",Gene))%>%
   dummy_cols(., select_columns = "Gene")%>%
   group_by(Patient.ID)%>%
-  summarise(nom = n(),
+  summarise(nom = n(), 
+            nom_CH = sum(CH),
             DNMT3A = sum(Gene_DNMT3A),
             TET2 = sum(Gene_TET2),
             ASXL1 = sum(Gene_ASXL1),
@@ -128,6 +163,7 @@ df.mut %>%
             CHEK2 = sum(Gene_CHEK2),
             ATM = sum(Gene_ATM),
             maxVAF = max(TVAF),
+            maxVAF_CH = max(maxVAF_CH),
             CH = sign(sum(CH)),
             HRD = sign(sum(HRD)),
             DDR = sign(sum(DDR)))%>%
@@ -136,11 +172,11 @@ df.mut %>%
          tp53ppm1d = sign(TP53+PPM1D),
          splice_mut = sign(SF3B1+U2AF1),
          any_clone = 1,
-         CHIP = ifelse(maxVAF >= 0.02,1,0),
-         CH5 = ifelse(maxVAF >= 0.05,1,0),
-         CH10 = ifelse(maxVAF >= 0.1,1,0),
-         mult.mut = ifelse(nom > 1,2,ifelse(nom == 0,0,1)),
-         nond3a.mut = sign(nom - DNMT3A)
+         CHIP = ifelse(maxVAF_CH >= 0.02,1,0),
+         CH5 = ifelse(maxVAF_CH >= 0.05,1,0),
+         CH10 = ifelse(maxVAF_CH >= 0.1,1,0),
+         mult.mut = ifelse(nom_CH > 1,2,ifelse(nom == 0,0,1)),
+         nond3a.mut = sign(nom_CH - DNMT3A)
   ) -> df.mut.dummy
 
 ##Fuse mutation data with clinical data
@@ -148,8 +184,9 @@ df <- df.clin %>%
   full_join(.,df.mut.dummy,by="Patient.ID") %>% 
   mutate_at(.vars = vars(c("DNMT3A", "TET2", "ASXL1","SF3B1","U2AF1","PPM1D","TP53","CHEK2","ATM","tp53ppm1d","DTA","DDR","splice_mut","CH","any_clone","HRD","CHIP","CH5","CH10","nond3a.mut")),
             .funs = list(~as.factor(sign(ifelse(is.na(.),0,.))))) %>%  
-  mutate_at(.vars = vars(c("nom","maxVAF","mult.mut")),
-            .funs = list(~ifelse(is.na(.),0,.))) 
+  mutate_at(.vars = vars(c("nom","nom_CH","maxVAF","maxVAF_CH","mult.mut")),
+            .funs = list(~ifelse(is.na(.),0,.))) %>%
+  mutate(CH_category = cut(maxVAF_CH,breaks=c(-Inf,0.01,0.1,Inf),labels=c("<1%","1-10%",">10%")))
 
 ##Save RData for further use
 tempdata <-ls()

@@ -113,6 +113,8 @@ df.eot %>%
   dplyr::select(-n.serial) -> df.missing
 
 df.serial <- full_join(df.eot,df.missing)
+
+###serial dynamics plot faceted by patient
   
 df.serial%>%
   filter(Patmut %in% Patmut.serial)%>%
@@ -187,11 +189,14 @@ df.eot_rel <- full_join(df.eotd1,df.eoteot) %>% mutate(relvaf1 = vaf_d1/vaf_d1,
 
 ####   plot rel vaf2 as points according to gene, coloured in ExonicFunc (frameshift,...) ####
 df.eot_rel %>% 
+  group_by(Gene)%>%
+  mutate(n.gene=n())%>%
+  data.frame%>%
   mutate(timepoint = ifelse(variable=="relvaf1",0,timepoint))%>%
   mutate(Patmut = paste(Patient.ID,position,sep="_"))%>%
   mutate(fitness_binom = ifelse(fitness>0.25,"increasing",
                                 ifelse(fitness < -0.25,"decreasing","stable")))%>%
-  filter(is.element(Gene,c("CHEK2","PPM1D","DNMT3A","TP53","TET2", "ATM")))%>%
+  filter(is.element(Gene,c("CHEK2","PPM1D","DNMT3A","TP53","TET2")))%>%
   ggplot(aes(x = timepoint, y = value, color = fitness_binom, group = Patmut)) +
   geom_point(size = 1.5, na.rm = FALSE) + 
   geom_line()+
@@ -200,10 +205,10 @@ df.eot_rel %>%
   labs(x = "Time in days", y = "VAF change", color = "Fitness") +
   my_theme() +
   theme(strip.text = element_text(face = "italic"))+
-  facet_wrap(~Gene)-> p.growth
+  facet_wrap(~reorder(Gene,-n.gene),ncol=5)-> p.growth
 p.growth
 
-png("output/figures/relgrowth_wb_gene.png",width=8, height=5,units="in",res=500,type="cairo")
+png("output/figures/relgrowth_wb_gene.png",width=10, height=2.5,units="in",res=500,type="cairo")
 p.growth
 dev.off()
 
@@ -220,7 +225,7 @@ df.eot_rel %>%
             y = "fitness",
             order = c("TP53","PPM1D","CHEK2","TET2","DNMT3A"),
             combine = TRUE,
-            color = "DDR", 
+            color = "Gene", 
            # palette = ,
             xlab = "Gene",
             ylab = "Fitness",
@@ -254,15 +259,27 @@ df.eot_rel %>%
   filter(variable == "relvaf2") %>% 
   group_by(Gene)%>%
   mutate(medfit = median(fitness))%>%
+  mutate(n.gene=n())%>%
   data.frame%>%
+  mutate(labels = paste(Gene,"\n n = ",n.gene,sep=""),
+         breaks = Gene)->labels
+
+df.eot_rel %>% 
+  filter(variable == "relvaf2") %>% 
+  group_by(Gene)%>%
+  mutate(medfit = median(fitness))%>%
+  mutate(n.gene=n())%>%
+  data.frame%>%
+  mutate(label = paste(Gene,"\n n = ",n.gene,sep=""))%>%
   filter(is.element(Gene,c("CHEK2","PPM1D","DNMT3A","TP53","TET2")))%>%
   mutate(DDR = ifelse(is.element(Gene,c("TP53","PPM1D","CHEK2")),"DDR","non-DDR"))%>%
   ggplot(., aes(x=reorder(Gene,medfit), y=fitness, fill=DDR)) + 
-  geom_violin(trim=TRUE,bw=1,aes(color=DDR))+
+  geom_violin(trim=TRUE,bw=1,aes(color=DDR),width=0.8)+
   geom_boxplot(width=0.1, fill="white")+
-  labs(title="",x="Gene", y = "Fitness")+
+  labs(title="",x="Gene", y = "Clonal fitness")+
   my_theme() + 
   theme(axis.title.x = element_blank()) +
+  scale_x_discrete(breaks = labels$breaks, labels=labels$labels)+
   ylim(c(-5,16))+
   scale_fill_npg(name="",labels=c("DDR gene","DTA gene"))+
   scale_color_npg(name="",labels=c("DDR gene","DTA gene"))+
@@ -270,14 +287,16 @@ df.eot_rel %>%
   theme(#legend.position = "none",
     axis.text.x = element_text(face="italic"),
     axis.title.y = element_text(face ="plain"),
-    plot.title = element_text(hjust=0,face ="plain"))+
+    plot.title = element_text(hjust=0,face ="plain"),
+    axis.line.x = element_blank(),
+    axis.ticks.x = element_blank())+
   stat_compare_means(comparisons=my_comp,
                      label="p.signif",
                      vjust=0.001,
                      label.y = c(10,11,12,13),
                      tip.length=c(0.005,0.005,0.005,0.005))->p.fitness_violin
 
-png("output/figures/fitness_violin.png",width=6, height=6,units="in",res=500,type="cairo")
+png("output/figures/fitness_violin.png",width=6, height=5,units="in",res=500,type="cairo")
 p.fitness_violin
 dev.off()
 
@@ -287,13 +306,16 @@ df.eot_rel %>% filter(vaf_d1 < 0.01&vaf_eot >= 0.01) %>% mutate(class = "emergin
 df.eot_rel %>% filter(vaf_d1 >= 0.01&vaf_eot < 0.01) %>% mutate(class = "disappearing")-> df.disappearing
 
 full_join(df.emerging,df.disappearing) %>%
-  mutate(gene = ifelse(is.element(Gene,hrd_genes),"HRD",Gene))%>%
+  mutate(gene = ifelse(is.element(Gene,c("DNMT3A","TET2","TP53","PPM1D","CHEK2")),Gene,"other"))%>%
+  mutate(gene = factor(gene,levels = c("CHEK2","DNMT3A","PPM1D","TET2","TP53","other")))%>%
   ggplot(aes(x=class,fill=gene))+
   geom_bar(stat="count",width=0.5)+
   labs(title="",x="", y = "No. of mutations")+
   my_theme() + 
   theme(axis.title.x = element_blank(),
-        legend.text = element_text(face="italic")) +
+        legend.text = element_text(face="italic"),
+        axis.line.x = element_blank(),
+        axis.ticks.x = element_blank()) +
   scale_fill_npg(name="Gene") -> p.dynamics
   
 png("output/figures/barchart_dynamics.png",width=4, height=4,units="in",res=500,type="cairo")

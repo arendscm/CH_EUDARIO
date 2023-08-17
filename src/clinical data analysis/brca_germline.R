@@ -23,6 +23,7 @@ library(reshape2)
 library(dplyr)
 library(tableone)
 library(ggplot2)
+library(ggsci)
 
 ########   Load IDs    ########
 source("src/material_table.R")
@@ -31,7 +32,6 @@ source("src/global_functions_themes.R")
 ########## Load clinical data  ##########
 load("data/interim/clin.RData")
 load("data/interim/seqdata_filtered.RData")
-
 
 ######## Plot with mut spectrum in pts with and without prior PARPi
 
@@ -72,56 +72,6 @@ p.mutprev_brca
 png("output/figures/mutprev_brca.png",width=6, height=6,units="in",res=500,type="cairo")
 p.mutprev_brca
 dev.off()
-
-
-#####determinants of ch
-
-my_vars_baseline=c("Arm",
-                   "BRCA1",
-                   "BRCA2",
-                   "BRCA_germline",
-                   "ECOG",
-                   "LVEF_C1D1",
-                   "TumorBurden_baseline",
-                   "Number_PreviousLines",
-                   "Number_PreviousPlatinumLines",
-                   "No_Platinum_lines_binom",
-                   "Type_PreviousTherapy",
-                   "PriorPARPi",
-                   "Duration_PriorPARPi",
-                   "Age_TreatmentStartEUDARIO")
-
-cat_vars_baseline=c("Arm",
-                    "BRCA1",
-                    "BRCA2",
-                    "BRCA_germline",
-                    "ECOG",
-                    "Type_PreviousTherapy",
-                    "PriorPARPi",
-                    "No_Platinum_lines_binom")
-
-cont_vars_baseline = setdiff(my_vars_baseline,cat_vars_baseline)
-
-df.clin %>% CreateTableOne(strata = "PPM1D",
-                      vars=c(my_vars_baseline),
-                      factorVars = cat_vars_baseline,
-                      includeNA=FALSE,
-                      #addOverall = TRUE,
-                      data=.) %>% 
-  print(., 
-        #nonnormal=cont_vars_baseline,
-        exact=cat_vars_baseline,
-        missing=TRUE,
-        showAllLevels=TRUE,
-        quote=FALSE)
-
-####### logistic regression ########################
-
-log.reg <- glm(DTA ~ Age_TreatmentStartEUDARIO + PriorPARPi + No_Platinum_lines_binom + BRCA_germline, family="binomial",data=df.clin)
-summary(log.reg)
-
-
-
 
 
 
