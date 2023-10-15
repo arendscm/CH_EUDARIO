@@ -3,7 +3,7 @@
 #
 # Author: Max & Klara
 #
-# Description: Analysis of longitudinal data WB samples
+# Description: Analysis of longitudinal WB samples
 #
 # Input: seqdata
 #
@@ -187,7 +187,7 @@ df.eot_rel <- full_join(df.eotd1,df.eoteot) %>% mutate(relvaf1 = vaf_d1/vaf_d1,
   melt.data.frame(measure.vars = c("relvaf1","relvaf2"))
 
 
-####   plot rel vaf2 as points according to gene, coloured in ExonicFunc (frameshift,...) ####
+####   plot relative vaf change for top 5 genes
 df.eot_rel %>% 
   group_by(Gene)%>%
   mutate(n.gene=n())%>%
@@ -210,46 +210,6 @@ p.growth
 
 png("output/figures/relgrowth_wb_gene.png",width=10, height=2.5,units="in",res=500,type="cairo")
 p.growth
-dev.off()
-
-####   Boxplot Fitness index according to DDR/non DDR ####
-my_comp=list(c("DNMT3A","TP53"),c("PPM1D","TET2"),c("DNMT3A","PPM1D"))
-
-df.eot_rel %>% 
-  filter(variable == "relvaf2") %>% 
-  #mutate(growthrate = log(value)/timepoint)%>%
-  filter(is.element(Gene,c("CHEK2","PPM1D","DNMT3A","TP53","TET2")))%>%
-  mutate(DDR = ifelse(is.element(Gene,c("TP53","PPM1D","CHEK2")),"DDR","non-DDR"))%>%
-  ggboxplot(., 
-            x = "Gene",
-            y = "fitness",
-            order = c("TP53","PPM1D","CHEK2","TET2","DNMT3A"),
-            combine = TRUE,
-            color = "Gene", 
-           # palette = ,
-            xlab = "Gene",
-            ylab = "Fitness",
-            title = "",
-            width = 0.3,
-            ylim = c(-4,16),
-            size=0.8,
-            alpha=1,
-            repel=TRUE,
-            #yscale = "log10",
-            scales = "free",
-            add = c("jitter")
-           )+
-  stat_compare_means(comparisons=my_comp,label="p.signif",vjust=0.01,label.y = c(10,12,14))+
-  scale_color_npg()+
-  theme_minimal() + 
-  theme(axis.title.x = element_blank()) +
-  theme(#legend.position = "none",
-        axis.text.x = element_text(face="italic"),
-        axis.title.y = element_text(face ="plain"),
-        plot.title = element_text(hjust=0,face ="plain")) ->p.fitness_boxplot
-
-png("output/figures/fitness_boxplot.png",width=5, height=5,units="in",res=500,type="cairo")
-p.fitness_boxplot
 dev.off()
 
 ##alternative: violin plot
@@ -342,5 +302,24 @@ df.eot_rel %>%
     axis.title.y = element_text(face ="plain"),
     plot.title = element_text(hjust=0,face ="plain"))+
   stat_compare_means()
+
+###exploratory: does vaf_cf/caf_wb ratio correlate with fitness?
+load("data/interim/cf_wb.RData")
+df.cf_wb_c1d1 %>% 
+  filter(compartment=="wb")%>%
+  filter(Gene.x %in% typical_ch_genes)%>%
+  dplyr::select(Patient.ID.y,Patmut.y,Gene.y,AAChange.y,position.y,TVAF.x,TVAF.y,tag,gene_group,compartment) %>%
+  left_join(.,
+            df.eot_rel %>% 
+              mutate(Patmut = paste(Patient.ID,"_",position,sep="")) %>%
+              filter(variable=="relvaf2"),
+            by=c("Patmut.y"="Patmut")) %>%
+  filter(!is.na(Patient.ID))%>%
+  mutate(cf_wb_ratio = TVAF.x/TVAF.y)%>%select(fitness,cf_wb_ratio) %>% 
+  mutate(fitness_binom = ifelse(fitness > 0,1,-1)) %>%
+  ggboxplot(.,
+            x="fitness_binom",
+            y="cf_wb_ratio") + stat_compare_means()
+
 
 

@@ -153,8 +153,8 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
   mutate(TVAF.y = ifelse(is.na(TVAF.y),0.001,TVAF.y))%>%
   mutate(TVAF.x = ifelse(is.na(TVAF.x),0.001,TVAF.x))%>%
   filter(TR2.x>9|TR2.y>9)%>%
-  filter(TVAF.y>=0.008|TVAF.x>=0.008)%>%
-  filter(TVAF.y > 0.1*TVAF.x,TVAF.y>0.001)%>%
+  filter(TVAF.y+TVAF.x>=0.008)%>%
+  filter(TVAF.y > 0.2*TVAF.x,TVAF.y>0.001)%>%
   mutate(tag = ifelse(is.na(tag.x),
                       ifelse(is.na(tag.y),
                              "not tagged",
@@ -197,8 +197,8 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
   #geom_abline(slope=1/3,size=1,linetype=3,alpha=0.5,intercept=-2)+
   scale_y_log10()+
   scale_x_log10()+
-  scale_color_npg(name="Gene group",labels=c("CH genes","HRD genes","other myeloid genes","TP53"))+
-  ylab("whole blood VAF")+
+  scale_color_npg(name="Gene group",labels=c("CH genes","HR-related genes","other myeloid genes","TP53"))+
+  ylab("whole-blood VAF")+
   xlab("cfDNA VAF")+
   my_theme2() -> p.cf.corr
 p.cf.corr
@@ -220,6 +220,7 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
                              as.character(tag.y)),
                       as.character(tag.x)))%>%
   mutate(gene_group = ifelse(is.na(gene_group.x),gene_group.y,gene_group.x))%>%
+  mutate(gene_group = ifelse(gene_group == "HRD","HR-related",gene_group))%>%
   mutate(Gene = ifelse(is.na(Gene.x),Gene.y,Gene.x))%>%
   mutate(compartment = ifelse(TVAF.x > TVAF.y*5,"cf","wb"))%>%
   filter(compartment == "cf")%>%
@@ -232,7 +233,7 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
   xlab("")+
   scale_y_continuous(position = "right")+
   ylab("No. of mutations") +
-  scale_fill_npg(name="Origin",labels=c("cf" = "other", "wb" = "hematopoietic"))+
+  scale_fill_npg(name="Origin",labels=c("wb" = "hematopoietic","cf" = "other"))+
   my_theme() +
   theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35),
         axis.ticks.y = element_blank())+
@@ -291,6 +292,7 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
                              as.character(tag.y)),
                       as.character(tag.x)))%>%
   mutate(gene_group = ifelse(is.na(gene_group.x),gene_group.y,gene_group.x))%>%
+  mutate(Gene = ifelse(is.na(Gene.x),Gene.y,Gene.x))%>%
   mutate(compartment = ifelse(TVAF.x > TVAF.y*5,"cf","wb"))%>%
   dplyr::select(gene_group, compartment) %>% table
 
@@ -321,7 +323,7 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
   xlab("")+
   scale_y_continuous(position = "right")+
   ylab("No. of mutations") +
-  scale_fill_npg(name="Origin",labels=c("cf" = "other", "wb" = "hematopoietic"))+
+  scale_fill_npg(name="Origin",labels=c("wb" = "hematopoietic","cf" = "other"),breaks=c("wb","cf"))+
   my_theme() +
   theme(axis.text.y=element_text(angle=0,
                                  hjust=1,
@@ -382,6 +384,7 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
   filter(Gene=="TP53")%>%
   mutate(AAChange = AAChange.x,
          Sample = Patient.ID.x,
+         Patient.ID = Patient.ID.x,
          ExonicFunc=ExonicFunc.x,
          Chr=Chr.x,
          Start=Start.x,
@@ -392,7 +395,7 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
          tag = tag.x,
          Func=Func.x,
          COSMIC=cosmic92_coding.x)%>%
-  dplyr::select(Gene,AAChange,Sample,Func,ExonicFunc,Chr,Start,End,Ref,Alt,TVAF,tag,COSMIC)-> df.tp53
+  dplyr::select(Gene,AAChange,Patient.ID,Func,ExonicFunc,Chr,Start,End,Ref,Alt,TVAF,tag,COSMIC)-> df.tp53
 
 df.tp53_wb <- df.tp53 %>% filter(tag=="true")%>%makeMAF
 df.tp53_cf <- df.tp53 %>% filter(tag=="cf-only")%>%makeMAF
@@ -423,6 +426,27 @@ g3Lollipop(df.tp53_cf,
            save.png.btn	= FALSE,
            save.svg.btn = FALSE,
            output.filename = "cbioportal_theme")
+
+##Save RData for further use
+full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in% Patmut_all),by="cfID") %>% 
+  mutate(TVAF.y = ifelse(is.na(TVAF.y),0.001,TVAF.y))%>%
+  mutate(TVAF.x = ifelse(is.na(TVAF.x),0.001,TVAF.x))%>%
+  filter(TR2.x>9|TR2.y>9)%>%
+  filter(TVAF.y+TVAF.x>=0.008)%>%
+  mutate(tag = ifelse(is.na(tag.x),
+                      ifelse(is.na(tag.y),
+                             "not tagged",
+                             as.character(tag.y)),
+                      as.character(tag.x)))%>%
+  mutate(gene_group = ifelse(is.na(gene_group.x),gene_group.y,gene_group.x))%>%
+  mutate(compartment = ifelse(TVAF.x > TVAF.y*5,"cf","wb")) -> df.cf_wb_c1d1
+
+tempdata <-ls()
+rm(list=tempdata[!is.element(tempdata,c("df.cf_wb_c1d1"))])
+rm(tempdata)
+
+save.image("data/interim/cf_wb.RData")
+
 
 
 

@@ -19,7 +19,6 @@ library(tidyr)
 library(reshape2)
 library(ggplot2)
 library(ggthemes)
-library(viridis)
 library(reshape)
 library(ggpubr)
 library(g3viz)
@@ -111,35 +110,35 @@ df.filtered.c1d1 %>%
 df.filtered.c1d1 %>% 
   filter(tag == "true") %>%
   filter(TVAF >= 0.01) %>%
-  #filter(Gene %in% ch_genes)%>%  #only CH panel, when we say: this is the prevalence plot for CH in these patients
-  dplyr::select(Sample, Gene) %>% 
+  mutate(gene_group = ifelse(Gene %in% typical_ch_genes_without_HRD,"CH",
+                             ifelse(Gene %in% typical_ch_genes,"CH / HR-related",
+                                    ifelse(Gene %in% hrd_genes,"HR-related","other myeloid")))) %>%
+  dplyr::select(Sample, Gene, gene_group) %>% 
   data.frame %>% 
   unique %>% 
-  dplyr::select(Gene) %>% 
+  dplyr::select(Gene, gene_group) %>% 
   table %>% 
   data.frame %>% 
   filter(Freq >0) %>% 
   mutate(prev = Freq/nop) %>% 
   arrange(prev) -> prev.table
-names(prev.table)<- c( "Gene","Freq","prev")
+names(prev.table)<- c( "Gene","gene_group","Freq","prev")
 
 prev.table  %>%
-  mutate(HRD = ifelse(is.element(Gene,hrd_genes),"HRD","non-HRD"))%>%
-  mutate(DDR = ifelse(is.element(Gene,ddr_genes),"DDR","non-DDR"))%>%
-  ggplot(aes(x=reorder(Gene, Freq), y=prev, fill=DDR)) +
-  geom_bar(stat="identity", width=0.6)+
-  geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
+  ggplot(aes(x=reorder(Gene, -Freq), y=prev, fill=gene_group)) +
+  geom_bar(stat="identity", width=0.7)+
+  #geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
   xlab("")+
-  scale_y_continuous(labels = percent,limits=c(0,0.3), position = "right")+
-  ylab("Gene Mutation Prevalence [%]") +
+  scale_y_continuous(labels = percent,limits=c(0,0.3))+
+  ylab("No. of patients") +
   my_theme() +
-  theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35,face="italic")) +
-  coord_flip() + 
-  theme(legend.position = c(0.7, 0.3))+
-  scale_fill_npg(name="DNA damage response") -> p.mutprev
+  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.35,face="italic"),
+        axis.ticks.x = element_blank()) +
+  theme(legend.position = c(0.8, 0.8))+
+  scale_fill_manual(values = c("#E64B35FF","#3C5488FF","#4DBBD5FF","#00A087FF"), name="Gene group") -> p.mutprev
 p.mutprev
 
-png("output/figures/mutprev.png",width=6, height=6,units="in",res=500,type="cairo")
+png("output/figures/mutprev.png",width=8, height=4,units="in",res=500,type="cairo")
 p.mutprev
 dev.off()
 

@@ -61,7 +61,7 @@ df.nom %>%
   filter(nom!=0)%>%
   ggplot(., aes(x = nom, y = Freq, fill="1")) +
   geom_bar(stat = "identity") +
-  labs(x = "Number of Mutations", y = "Number of Patients")+
+  labs(x = "No. of mutations", y = "No. of patients")+
   scale_fill_npg(name="",breaks=c(""))+
   #scale_x_continuous(limits = c(0.5, 8.5), breaks = 1:8)+
   #ggtitle("No. of mutations per patient [>1%]")+
@@ -70,55 +70,6 @@ p.nom
 
 png("output/figures/sc/nom.png",width=4, height=3,units="in",res=500,type="cairo")
 p.nom
-dev.off()
-
-###### Oncoplot for mutations at d0
-
-maf<-full_join(SC_registry %>% 
-                 filter(Visite==1) %>% 
-                 mutate(Sample_ID=Patient.ID, Tumor_Sample_Barcode=Patient.ID) %>% 
-                 dplyr::select(Sample_ID,Tumor_Sample_Barcode),makeMAF(df.filtered.newsamples%>% 
-                                                                         mutate(Gene=ifelse(Gene=="U2AF1;U2AF1L5","U2AF1",Gene))%>%
-                                                                         filter(tag=="true",TVAF >= 0.01))) 
-
-
-df.maf <- read.maf(maf)
-
-vc_cols = pal_npg("nrc")(8)
-names(vc_cols) = c(
-  'Frame_Shift_Del',
-  'Missense_Mutation',
-  'Nonsense_Mutation',
-  'Multi_Hit',
-  'Frame_Shift_Ins',
-  'In_Frame_Ins',
-  'Splice_Site',
-  'In_Frame_Del'
-)
-
-#This is the final colored list. Names of the list elements should match those in clinicalFeatures arguments 
-
-pw1<-data.frame(ch_genes_without_HRD,"CH")
-names(pw1) <- c("Genes","Pathway")
-pw2<-data.frame(hrd_genes,"HRD")
-names(pw2) <- c("Genes","Pathway")
-Group <- rbind(pw1,pw2)
-
-
-png("output/figures/oncoplot.png",width=12, height=8,units="in",res=500,type="cairo")
-
-oncoplot(df.maf,
-         top = 22,
-         colors = vc_cols,
-         drawColBar = TRUE,
-         topBarData = maf %>% group_by(Tumor_Sample_Barcode) %>% mutate(nom=n())%>% data.frame %>% mutate('No. of mutations' = nom) %>% dplyr::select(Tumor_Sample_Barcode,'No. of mutations') %>% unique,
-         removeNonMutated = FALSE,
-         annotationColor = anno_cols,
-         pathways = Group,
-         sortByAnnotation = TRUE,
-         annotationOrder = c("Yes","No","NA"),
-         anno_height = 1.5) 
-
 dev.off()
 
 
@@ -174,11 +125,37 @@ prev.table  %>%
   theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35,face="italic")) +
   coord_flip() + 
   theme(legend.position = c(0.7, 0.3))+
-  scale_fill_npg() -> p.mutprev
+  scale_fill_npg(name="",labels=c("HR-related","other")) -> p.mutprev
 p.mutprev
 
 png("output/figures/sc/mutprev.png",width=6, height=6,units="in",res=500,type="cairo")
 p.mutprev
+dev.off()
+
+##selected patients with multiple mutations
+selected_patients <- c("SC-2","SC-3","SC-4","SC-5","SC-6","SC-7","SC-37")
+
+df.filtered.d0 %>% 
+  filter(tag == "true") %>%
+  group_by(Patient.ID,Gene)%>%
+  mutate(mutation = paste(Gene,row_number()))%>%
+  data.frame%>%
+  filter(Patient.ID %in% selected_patients) %>%
+  mutate(DDR = ifelse(is.element(Gene,ddr_genes),"DDR","non-DDR"))%>%
+  ggplot(aes(x=mutation, y= TVAF, fill=Gene)) +
+  geom_bar(stat="identity")+
+  ylab("VAF") +
+  xlab("") +
+  my_theme() +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.line.x = element_blank())+
+  facet_wrap(~Patient.ID, nrow=2)+
+  scale_fill_npg() -> p.scpat
+p.scpat
+
+png("output/figures/sc/sc_patients.png",width=6, height=4,units="in",res=500,type="cairo")
+p.scpat
 dev.off()
 
 ################### Overview table ####
@@ -206,7 +183,7 @@ df.sc %>%
   filter(p.binom < -12) %>%
   filter(AF < 0.01) %>%
   filter(!snp)%>%
-  filter(Func!="intronic")%>%
+  filter(Func=="exonic")%>%
   filter(ExonicFunc != "synonymous SNV") %>%
   group_by(Patient.ID,position) %>%
   mutate(maxVAF = max(TVAF),

@@ -34,6 +34,8 @@ load("data/interim/seqdata_filtered.RData")
 ########   Load clinical data    ########
 df.clin_orig <- data.frame(read.xlsx("data/external/clindata_modified.xlsx",1,header=TRUE))
 df.ae <- data.frame(read.table("data/external/ae_modified.csv",header=TRUE,sep=";"))
+df.ae_ctx <- df.ae %>% filter(Date_diff >= 0)
+df.ae_main <- df.ae %>% filter(Date_diff < 0)
 df.bc <- data.frame(read.table("data/external/bc_modified.csv",header=TRUE,sep=";"))
 df.response <- data.frame(read.table("data/external/response_modified.csv",header=TRUE,sep=";"))
 
@@ -111,6 +113,104 @@ df.clin <- df.clin_orig %>%
                                                 dplyr::select(patient_code)%>% 
                                                 unique)$patient_code)
          )%>%
+  mutate(ae_haematotox_ctx = is.element(Patient.ID,(df.ae_ctx %>%
+                                                  filter(is.element(AE_consensus_term,c("neutropenia","thrombocytopenia","anemia")))%>%
+                                                  dplyr::select(patient_code)%>% 
+                                                  unique)$patient_code),
+         ae_neutropenia_ctx = is.element(Patient.ID,(df.ae_ctx %>%
+                                                   filter(is.element(AE_consensus_term,c("neutropenia")))%>%
+                                                   dplyr::select(patient_code)%>% 
+                                                   unique)$patient_code),
+         ae_thrombocytopenia_ctx = is.element(Patient.ID,(df.ae_ctx %>%
+                                                        filter(is.element(AE_consensus_term,c("thrombocytopenia")))%>%
+                                                        dplyr::select(patient_code)%>% 
+                                                        unique)$patient_code),
+         ae_anemia_ctx = is.element(Patient.ID,(df.ae_ctx %>%
+                                              filter(is.element(AE_consensus_term,c("anemia")))%>%
+                                              dplyr::select(patient_code)%>% 
+                                              unique)$patient_code),
+         ae_haematotox_severe_ctx = is.element(Patient.ID,(df.ae_ctx %>%
+                                                         filter(is.element(AE_consensus_term,c("neutropenia","thrombocytopenia","anemia"))&AE_18_severity>2)%>%
+                                                         dplyr::select(patient_code)%>% 
+                                                         unique)$patient_code),
+         ae_infection_ctx = is.element(Patient.ID,(df.ae_ctx %>%
+                                                 filter(is.element(AE_consensus_term,c("infection")))%>%
+                                                 dplyr::select(patient_code)%>% 
+                                                 unique)$patient_code),
+         ae_infection_severe_ctx = is.element(Patient.ID,(df.ae_ctx %>%
+                                                        filter(is.element(AE_consensus_term,c("infection"))&AE_18_severity>2)%>%
+                                                        dplyr::select(patient_code)%>% 
+                                                        unique)$patient_code),
+         ae_allergic_reaction_ctx = is.element(Patient.ID,(df.ae_ctx %>%
+                                                         filter(is.element(AE_consensus_term,c("allergic reaction")))%>%
+                                                         dplyr::select(patient_code)%>% 
+                                                         unique)$patient_code),
+         ae_allergic_reaction_severe_ctx = is.element(Patient.ID,(df.ae_ctx %>%
+                                                                filter(is.element(AE_consensus_term,c("allergic reaction"))&AE_18_severity>2)%>%
+                                                                dplyr::select(patient_code)%>% 
+                                                                unique)$patient_code),
+         ae_kidney_failure_ctx = is.element(Patient.ID,(df.ae_ctx %>%
+                                                      filter(is.element(AE_consensus_term,c("increased creatinine","renal insufficiency","kidney insufficiency")))%>%
+                                                      dplyr::select(patient_code)%>% 
+                                                      unique)$patient_code),
+         ae_transaminases_ctx = is.element(Patient.ID,(df.ae_ctx %>%
+                                                     filter(is.element(AE_consensus_term,c("increased transaminases")))%>%
+                                                     dplyr::select(patient_code)%>% 
+                                                     unique)$patient_code),
+         ae_bleeding_ctx = is.element(Patient.ID,(df.ae_ctx %>%
+                                                filter(is.element(AE_consensus_term,c("bleeding")))%>%
+                                                dplyr::select(patient_code)%>% 
+                                                unique)$patient_code)
+  )%>%
+  mutate(ae_haematotox_main = is.element(Patient.ID,(df.ae_main %>%
+                                                      filter(is.element(AE_consensus_term,c("neutropenia","thrombocytopenia","anemia")))%>%
+                                                      dplyr::select(patient_code)%>% 
+                                                      unique)$patient_code),
+         ae_neutropenia_main = is.element(Patient.ID,(df.ae_main %>%
+                                                       filter(is.element(AE_consensus_term,c("neutropenia")))%>%
+                                                       dplyr::select(patient_code)%>% 
+                                                       unique)$patient_code),
+         ae_thrombocytopenia_main = is.element(Patient.ID,(df.ae_main %>%
+                                                            filter(is.element(AE_consensus_term,c("thrombocytopenia")))%>%
+                                                            dplyr::select(patient_code)%>% 
+                                                            unique)$patient_code),
+         ae_anemia_main = is.element(Patient.ID,(df.ae_main %>%
+                                                  filter(is.element(AE_consensus_term,c("anemia")))%>%
+                                                  dplyr::select(patient_code)%>% 
+                                                  unique)$patient_code),
+         ae_haematotox_severe_main = is.element(Patient.ID,(df.ae_main %>%
+                                                             filter(is.element(AE_consensus_term,c("neutropenia","thrombocytopenia","anemia"))&AE_18_severity>2)%>%
+                                                             dplyr::select(patient_code)%>% 
+                                                             unique)$patient_code),
+         ae_infection_main = is.element(Patient.ID,(df.ae_main %>%
+                                                     filter(is.element(AE_consensus_term,c("infection")))%>%
+                                                     dplyr::select(patient_code)%>% 
+                                                     unique)$patient_code),
+         ae_infection_severe_main = is.element(Patient.ID,(df.ae_main %>%
+                                                            filter(is.element(AE_consensus_term,c("infection"))&AE_18_severity>2)%>%
+                                                            dplyr::select(patient_code)%>% 
+                                                            unique)$patient_code),
+         ae_allergic_reaction_main = is.element(Patient.ID,(df.ae_main %>%
+                                                             filter(is.element(AE_consensus_term,c("allergic reaction")))%>%
+                                                             dplyr::select(patient_code)%>% 
+                                                             unique)$patient_code),
+         ae_allergic_reaction_severe_main = is.element(Patient.ID,(df.ae_main %>%
+                                                                    filter(is.element(AE_consensus_term,c("allergic reaction"))&AE_18_severity>2)%>%
+                                                                    dplyr::select(patient_code)%>% 
+                                                                    unique)$patient_code),
+         ae_kidney_failure_main = is.element(Patient.ID,(df.ae_main %>%
+                                                          filter(is.element(AE_consensus_term,c("increased creatinine","renal insufficiency","kidney insufficiency")))%>%
+                                                          dplyr::select(patient_code)%>% 
+                                                          unique)$patient_code),
+         ae_transaminases_main = is.element(Patient.ID,(df.ae_main %>%
+                                                         filter(is.element(AE_consensus_term,c("increased transaminases")))%>%
+                                                         dplyr::select(patient_code)%>% 
+                                                         unique)$patient_code),
+         ae_bleeding_main = is.element(Patient.ID,(df.ae_main %>%
+                                                    filter(is.element(AE_consensus_term,c("bleeding")))%>%
+                                                    dplyr::select(patient_code)%>% 
+                                                    unique)$patient_code)
+  )%>%
   filter(is.element(Patient.ID,ids %>% filter(firstTimepoint_wb==1) %>%.$Patient.ID)) %>% #only patients with available seq data
   left_join(.,id.brca_germline, by="Patient.ID") %>% #add BRCA germline status
   left_join(.,id.brca_somatic, by="Patient.ID") %>% #add BRCA somatic muts

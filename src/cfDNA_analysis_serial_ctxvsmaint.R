@@ -171,6 +171,12 @@ df.cf_c7eot <- full_join(df.cf_c7d1,df.cf_eotue,by=c("Patient.ID","Gene","AAChan
   mutate(fitness = log(vaf_eot/vaf_c7d1*(1-2*vaf_c7d1)/(1-2*vaf_eot))/(timepoint/365))%>%
   melt.data.frame(measure.vars = c("relvaf1","relvaf2"))
 
+##calculate meadian time on Ctx and maintenance
+df.cf_c1c7 %>% dplyr::select(Patient.ID,timepoint) %>% unique %>% .$timepoint %>% range
+df.cf_c1c7 %>% dplyr::select(Patient.ID,timepoint) %>% unique %>% .$timepoint %>% median
+
+df.cf_c7eot %>% dplyr::select(Patient.ID,timepoint) %>% unique %>% .$timepoint %>% range
+df.cf_c7eot %>% dplyr::select(Patient.ID,timepoint) %>% unique %>% .$timepoint %>% median
 
 ###direct comparison of clone fitnesss c1c7 vs c7eot only in patients which had 5 or 6 cycles of Platinum 
 full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
@@ -237,9 +243,59 @@ full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,
   stat_compare_means(label.y =13,aes(label=paste0("p = ", after_stat(p.format))))+
   my_theme()+
   theme(strip.text = element_text(face = "italic"))
-  
+
+##statistical test PPM1d
+full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
+          df.cf_c7eot%>%filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
+          by=c("Patient.ID","Gene","position")) %>%
+  filter(Patient.ID %in% (df.clin %>% filter(Number_ChemotherapyCycles > 5))$Patient.ID)%>%
+  mutate(fitness_platinum = fitness.x, 
+         fitness_maintenance = fitness.y)%>%
+  dplyr::select(-fitness.x,-fitness.y)%>%
+  mutate(Patmut = paste(Patient.ID,position,sep="_")) %>% filter(Gene == "PPM1D") -> df.ppm1d
+
+df.ppm1d$fitness_maintenance %>% median
+df.ppm1d$fitness_platinum %>% median
+
+wilcox.test(x=df.ppm1d$fitness_maintenance,y=df.ppm1d$fitness_platinum,paired=TRUE,alternative = "two.sided")
 
 
+##scatterplot growthrate Platinum+PARPi vs PARPI maintenance median+iqr
+full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
+          df.cf_c7eot%>%filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
+          by=c("Patient.ID","Gene","position")) %>%
+  mutate(fitness_platinum = fitness.x, 
+         fitness_maintenance = fitness.y)%>%
+  dplyr::select(-fitness.x,-fitness.y)%>%
+  mutate(Patmut = paste(Patient.ID,position,sep="_"))%>%
+  group_by(Gene)%>%
+  summarise(med.fit.plat = median(fitness_platinum),
+            med.fit.maint = median(fitness_maintenance),
+            min.fit.plat = quantile(fitness_platinum)[2],
+            max.fit.plat = quantile(fitness_platinum)[4],
+            min.fit.maint = quantile(fitness_maintenance)[2],
+            max.fit.maint = quantile(fitness_maintenance)[4],
+            size=n())%>%
+  data.frame %>%
+  filter(size>7)%>%
+  ggplot(aes(x=med.fit.plat,y=med.fit.maint,color=Gene))+
+  geom_abline(slope=1,intercept=0,linetype="dashed",alpha=0.8)+
+  geom_point(aes(size=size))+
+  geom_errorbar(aes(ymin=min.fit.maint,ymax=max.fit.maint),width=0.2)+
+  geom_errorbar(aes(xmin=min.fit.plat,xmax=max.fit.plat),width=0.2)+
+  scale_color_npg()+
+  scale_x_continuous(name="Median fitness Chemotherapy",lim=c(-6,6))+
+  scale_y_continuous(name="Median fitness maintenance",lim=c(-6,6))+
+  theme_minimal()+
+  theme(legend.text = element_text(face="italic"))->p.scatter_CvsM
+
+
+png("output/figures/p.cf.scatter_CvsM.png",width=4.5, height=3,units="in",res=500,type="cairo")
+p.scatter_CvsM
+dev.off()
+ 
+
+#alternatively with mean and SEM
 ##scatterplot growthrate Platinum+PARPi vs PARPI maintenance mean+sem
 full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
           df.cf_c7eot%>%filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
@@ -273,40 +329,3 @@ full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,
 png("output/figures/p.cf.scatter_CvsM.png",width=4.5, height=3,units="in",res=500,type="cairo")
 p.scatter_CvsM
 dev.off()
-
-##scatterplot growthrate Platinum+PARPi vs PARPI maintenance median+iqr
-full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
-          df.cf_c7eot%>%filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
-          by=c("Patient.ID","Gene","position")) %>%
-  filter(Patient.ID %in% (df.clin %>% filter(Number_ChemotherapyCycles > 5))$Patient.ID)%>%
-  mutate(fitness_platinum = fitness.x, 
-         fitness_maintenance = fitness.y)%>%
-  dplyr::select(-fitness.x,-fitness.y)%>%
-  mutate(Patmut = paste(Patient.ID,position,sep="_"))%>%
-  group_by(Gene)%>%
-  summarise(med.fit.plat = median(fitness_platinum),
-            med.fit.maint = median(fitness_maintenance),
-            min.fit.plat = quantile(fitness_platinum)[2],
-            max.fit.plat = quantile(fitness_platinum)[4],
-            min.fit.maint = quantile(fitness_maintenance)[2],
-            max.fit.maint = quantile(fitness_maintenance)[4],
-            size=n())%>%
-  data.frame %>%
-  filter(size>7)%>%
-  ggplot(aes(x=med.fit.plat,y=med.fit.maint,color=Gene))+
-  geom_abline(slope=1,intercept=0,linetype="dashed",alpha=0.8)+
-  geom_point(aes(size=size))+
-  geom_errorbar(aes(ymin=min.fit.maint,ymax=max.fit.maint),width=0.2)+
-  geom_errorbar(aes(xmin=min.fit.plat,xmax=max.fit.plat),width=0.2)+
-  scale_color_npg()+
-  scale_x_continuous(name="Mean fitness Chemotherapy",lim=c(-6,6))+
-  scale_y_continuous(name="Mean fitness maintenance",lim=c(-6,6))+
-  theme_minimal() ->p.scatter_CvsM
-
-
-png("output/figures/p.cf.scatter_CvsM.png",width=5, height=4,units="in",res=500,type="cairo")
-p.scatter_CvsM
-dev.off()
-  
-  
- 
