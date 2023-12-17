@@ -195,8 +195,8 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
   geom_point(size=2)+
   geom_abline(slope=1,size=1,linetype=2,alpha=0.5)+
   #geom_abline(slope=1/3,size=1,linetype=3,alpha=0.5,intercept=-2)+
-  scale_y_log10()+
-  scale_x_log10()+
+  scale_y_log10(labels = scales::percent)+
+  scale_x_log10(labels = scales::percent)+
   scale_color_npg(name="Gene group",labels=c("CH genes","HR-related genes","other myeloid genes","TP53"))+
   ylab("whole-blood VAF")+
   xlab("cfDNA VAF")+
@@ -267,7 +267,7 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
   xlab("")+
   scale_y_continuous(position = "right")+
   ylab("No. of mutations") +
-  scale_fill_npg(name="Origin",labels=c("cf" = "other", "wb" = "hematopoietic"))+
+  scale_fill_npg(name="Origin",labels=c("cf" = "non-hematopoietic", "wb" = "hematopoietic"))+
   my_theme() +
   theme(axis.text.y=element_text(angle=0,hjust=1,vjust=0.35),
         axis.ticks.y = element_blank())+
@@ -323,7 +323,7 @@ full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in
   xlab("")+
   scale_y_continuous(position = "right")+
   ylab("No. of mutations") +
-  scale_fill_npg(name="Origin",labels=c("wb" = "hematopoietic","cf" = "other"),breaks=c("wb","cf"))+
+  scale_fill_npg(name="Origin",labels=c("wb" = "hematopoietic","cf" = "non-hematopoietic"),breaks=c("wb","cf"))+
   my_theme() +
   theme(axis.text.y=element_text(angle=0,
                                  hjust=1,

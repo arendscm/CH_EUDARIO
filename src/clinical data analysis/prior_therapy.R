@@ -320,7 +320,7 @@ data.frame(OR=exp(summary(log.reg)$coefficients[,1]),
            uCI=exp(summary(log.reg)$coefficients[,1]+ qnorm(0.975) * summary(log.reg)$coefficients[,2]))
 
 ##DDR mutations
-log.reg <- glm(DDR ~ age_dec + no_prev_lines_binom+ Duration_PriorPARPi, family="binomial",data=df.clin %>% mutate(age_dec=Age_TreatmentStartEUDARIO/10))
+log.reg <- glm(DDR ~ age_dec + no_prev_lines_binom+ Duration_PriorPARPi, family="binomial",data=df.clin %>% mutate(age_dec=Age_TreatmentStartEUDARIO/10, DDR = ifelse(TP53==1|PPM1D==1|ATM==1|CHEK2==1,1,0)))
 summary(log.reg)
 
 ##odds ratios + 95%CI

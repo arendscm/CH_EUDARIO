@@ -130,7 +130,7 @@ prev.table  %>%
   #geom_text(aes(label=Freq), hjust= -1, vjust=0.35, size=4)+
   xlab("")+
   scale_y_continuous(labels = percent,limits=c(0,0.3))+
-  ylab("No. of patients") +
+  ylab("Gene mutation prevalence") +
   my_theme() +
   theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.35,face="italic"),
         axis.ticks.x = element_blank()) +
@@ -138,7 +138,7 @@ prev.table  %>%
   scale_fill_manual(values = c("#E64B35FF","#3C5488FF","#4DBBD5FF","#00A087FF"), name="Gene group") -> p.mutprev
 p.mutprev
 
-png("output/figures/mutprev.png",width=8, height=4,units="in",res=500,type="cairo")
+png("output/figures/mutprev2.png",width=8, height=4,units="in",res=500,type="cairo")
 p.mutprev
 dev.off()
 

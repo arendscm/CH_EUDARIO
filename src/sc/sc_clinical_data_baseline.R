@@ -82,7 +82,7 @@ df.clin_sc %>% mutate(nom = ifelse(nom_CH==0,"0",ifelse(nom_CH==1,"1",">1")))%>%
   my_theme()  -> p.agedens 
 p.agedens
 
-png("output/figures/sc_agedens.png",width=4, height=3,units="in",res=500,type="cairo")
+png("output/figures/sc/sc_agedens.png",width=4, height=3,units="in",res=500,type="cairo")
 p.agedens
 dev.off()
 

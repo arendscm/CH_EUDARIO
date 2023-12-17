@@ -179,6 +179,7 @@ df.cf_c7eot %>% dplyr::select(Patient.ID,timepoint) %>% unique %>% .$timepoint %
 df.cf_c7eot %>% dplyr::select(Patient.ID,timepoint) %>% unique %>% .$timepoint %>% median
 
 ###direct comparison of clone fitnesss c1c7 vs c7eot only in patients which had 5 or 6 cycles of Platinum 
+my_comps = list(c("C","M"))
 full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
           df.cf_c7eot%>%filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
           by=c("Patient.ID","Gene","position")) %>%
@@ -188,20 +189,28 @@ full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,
   dplyr::select(-fitness.x,-fitness.y)%>%
   mutate(Patmut = paste(Patient.ID,position,sep="_"))%>%
   melt.data.frame(measure.vars = c("fitness_platinum","fitness_maintenance"))%>%
-  filter(Gene %in% c("CHEK2","PPM1D","DNMT3A","TP53","TET2"))%>%
-  ggplot(aes(x=variable,y=value,color=Gene))+
+  filter(Gene %in% c("CHEK2","PPM1D","DNMT3A","TP53","TET2"))%>% mutate(y_val = value,x_val = variable)-> df.ctxvsmaint
+
+stat.test <- df.ctxvsmaint %>%
+  group_by(Gene) %>%
+  wilcox_test(y_val~x_val,paired=TRUE)%>%add_significance()
+stat.test <- stat.test %>% add_xy_position()
+
+df.ctxvsmaint %>%
+  ggplot(aes(x=x_val,y=y_val,color=Gene))+
   geom_boxplot(color="darkgrey")+
   geom_point()+
   geom_line(aes(group=Patmut),alpha=0.5)+
-  scale_x_discrete(labels=c("C","M"),name="Therapy")+
-  scale_y_continuous(name="Fitness",limits=c(-10,15))+
+  scale_x_discrete(labels=c("C","P"),name="Therapy")+
+  scale_y_continuous(name="Clonal fitness",limits=c(-10,15))+
   scale_color_npg()+
   facet_grid(~Gene)+
   my_theme() +
   theme(strip.text = element_text(face = "italic"),
         legend.position = "none",
         axis.line.x = element_blank(),
-        axis.ticks.x = element_blank())-> p.fitness_CvsM
+        axis.ticks.x = element_blank())+
+  stat_pvalue_manual(stat.test, label = "p.signif", tip.length = 0.01)  -> p.fitness_CvsM
 p.fitness_CvsM
 
 png("output/figures/p.cf.serial_CvsM.png",width=6, height=3,units="in",res=500,type="cairo")
@@ -239,10 +248,10 @@ full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,
               scales = "free",
               add = c("jitter")
   )+  
-  scale_x_discrete(labels=c("C","M"),name="Therapy")+
+  scale_x_discrete(labels=c("platinum","PARPi"),name="")+
   stat_compare_means(label.y =13,aes(label=paste0("p = ", after_stat(p.format))))+
   my_theme()+
-  theme(strip.text = element_text(face = "italic"))
+  theme(strip.text = element_text(face = "italic")) -> p.ppm1d_tp53
 
 ##statistical test PPM1d
 full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
@@ -284,16 +293,50 @@ full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,
   geom_errorbar(aes(ymin=min.fit.maint,ymax=max.fit.maint),width=0.2)+
   geom_errorbar(aes(xmin=min.fit.plat,xmax=max.fit.plat),width=0.2)+
   scale_color_npg()+
-  scale_x_continuous(name="Median fitness Chemotherapy",lim=c(-6,6))+
+  scale_x_continuous(name="Median fitness chemotherapy",lim=c(-6,6))+
   scale_y_continuous(name="Median fitness maintenance",lim=c(-6,6))+
-  theme_minimal()+
-  theme(legend.text = element_text(face="italic"))->p.scatter_CvsM
+  my_theme()+
+  theme(legend.text = element_text(face="italic"))+
+  guides(size=guide_legend(title="No. of clones"))->p.scatter_CvsM
 
 
 png("output/figures/p.cf.scatter_CvsM.png",width=4.5, height=3,units="in",res=500,type="cairo")
 p.scatter_CvsM
 dev.off()
- 
+
+##tp53 and ppm1d only
+full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
+          df.cf_c7eot%>%filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
+          by=c("Patient.ID","Gene","position")) %>%
+  mutate(fitness_platinum = fitness.x, 
+         fitness_maintenance = fitness.y)%>%
+  dplyr::select(-fitness.x,-fitness.y)%>%
+  mutate(Patmut = paste(Patient.ID,position,sep="_"))%>%
+  group_by(Gene)%>%
+  summarise(med.fit.plat = median(fitness_platinum),
+            med.fit.maint = median(fitness_maintenance),
+            min.fit.plat = quantile(fitness_platinum)[2],
+            max.fit.plat = quantile(fitness_platinum)[4],
+            min.fit.maint = quantile(fitness_maintenance)[2],
+            max.fit.maint = quantile(fitness_maintenance)[4],
+            size=n())%>%
+  data.frame %>%
+  filter(Gene %in% c("PPM1D","TP53"))%>%
+  ggplot(aes(x=med.fit.plat,y=med.fit.maint,color=Gene))+
+  geom_abline(slope=1,intercept=0,linetype="dashed",alpha=0.8)+
+  geom_point(aes(size=size))+
+  geom_errorbar(aes(ymin=min.fit.maint,ymax=max.fit.maint),width=0.2)+
+  geom_errorbar(aes(xmin=min.fit.plat,xmax=max.fit.plat),width=0.2)+
+  scale_color_npg()+
+  scale_x_continuous(name="Median fitness carboplatin",lim=c(-2,4))+
+  scale_y_continuous(name="Median fitness PARPi",lim=c(-2,4))+
+  my_theme()+
+  theme(legend.text = element_text(face="italic"))->p.scatter_CvsM_tp53_ppm1d
+
+
+png("output/figures/p.cf.scatter_CvsM_tp53_ppm1d.png",width=4, height=3,units="in",res=500,type="cairo")
+p.scatter_CvsM_tp53_ppm1d
+dev.off()
 
 #alternatively with mean and SEM
 ##scatterplot growthrate Platinum+PARPi vs PARPI maintenance mean+sem
@@ -328,4 +371,71 @@ full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,
 
 png("output/figures/p.cf.scatter_CvsM.png",width=4.5, height=3,units="in",res=500,type="cairo")
 p.scatter_CvsM
+dev.off()
+
+
+##########HRD genetic background   UNFINISHED!!
+load("data/interim/clin.RData")
+
+full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
+          df.cf_c7eot%>%filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
+          by=c("Patient.ID","Gene","position")) %>%
+  left_join(.,df.clin %>% dplyr::select(Patient.ID, Arm, HRD_germline, brca_germline))%>%
+  mutate(HSP90 = ifelse(Arm==" A","no","yes"))%>%
+  mutate(HRD = ifelse(HRD_germline == 1, "HRD","no HRD"))%>%
+  mutate(gene_group= ifelse(is.element(Gene,c("PPM1D","TP53")),"TP53/PPM1D",
+                            ifelse(is.element(Gene,c("DNMT3A","TET2")),"DNMT3A/TET2","other")))-> df.plat_vs_parp_hrd
+
+df.plat_vs_parp_hrd%>%
+filter(Patient.ID %in% (df.clin %>% filter(Number_ChemotherapyCycles > 5))$Patient.ID)%>%
+  mutate(fitness_platinum = fitness.x, 
+         fitness_maintenance = fitness.y)%>%
+  dplyr::select(-fitness.x,-fitness.y)%>%
+  mutate(Patmut = paste(Patient.ID,position,sep="_"))%>%
+  group_by(gene_group,Arm,HRD)%>%
+  summarise(med.fit.plat = mean(fitness_platinum),
+            med.fit.maint = mean(fitness_maintenance),
+            err.fit.plat = sd(fitness_platinum)/sqrt(n()),
+            err.fit.maint = sd(fitness_maintenance)/sqrt(n()),
+            size=n())%>%
+  data.frame %>%
+  filter(gene_group=="TP53/PPM1D")%>%
+  ggplot(aes(x=med.fit.plat,y=med.fit.maint,color=gene_group))+
+  geom_abline(slope=1,intercept=0,linetype="dashed",alpha=0.8)+
+  geom_point(aes(size=size),alpha = 1)+
+  geom_errorbar(aes(ymin=med.fit.maint-err.fit.maint,ymax=med.fit.maint+err.fit.maint),width=0.2)+
+  geom_errorbar(aes(xmin=med.fit.plat-err.fit.plat,xmax=med.fit.plat+err.fit.plat),width=0.2)+
+  scale_color_npg()+
+  scale_x_continuous(name="Mean fitness Chemotherapy",lim=c(-2.5,5))+
+  scale_y_continuous(name="Mean fitness maintenance",lim=c(-2.5,5))+
+  scale_size(name="No. of mutations")+
+  my_theme()+
+  theme(legend.text = element_text(face="italic"))-> p.scatter_CvsM
+
+
+my_comp = list(c("HRD","no HRD"))
+df.eot_rel_arm %>%
+  filter(gene_group!="other")%>%
+  filter(is.element(Gene,c("PPM1D","TP53")))%>%
+  #filter(is.element(Gene,c("DNMT3A","TET2")))%>%
+  ggplot(., aes(x=factor(HRD), y=fitness, group=HRD, fill=gene_group)) + 
+  geom_violin(trim=TRUE,bw=1,width=0.6, aes(color=gene_group))+
+  geom_boxplot(width=0.1, fill="white")+
+  labs(title="",x="HRD status", y = "Fitness")+
+  scale_fill_npg() +
+  scale_color_npg() +
+  my_theme() + 
+  theme(axis.title.x = element_blank()) +
+  geom_hline(yintercept=0, linetype="dashed",alpha=0.7)+
+  theme(legend.position = "none",
+        axis.title.y = element_text(face ="plain"),
+        plot.title = element_text(hjust=0,face ="plain"))+
+  stat_compare_means(comp = my_comp,
+                     label="p.signif",
+                     vjust=0.001,
+                     label.y = c(10),
+                     tip.length=c(0.005))-> p.ddr_hrd
+
+png("output/figures/fitness_ddr_hrd.png",width=4, height=4,units="in",res=500,type="cairo")
+p.ddr_hrd
 dev.off()

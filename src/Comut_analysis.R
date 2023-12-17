@@ -59,7 +59,7 @@ createComut(sub,dis=0)%>%
   ylab(label="Gene 1") +
   labs(title = NULL) -> p.comut
 
-png("output/figures/comut.png",width=5, height=4,units="in",res=500,type="cairo")
+png("output/figures/comut.png",width=5.5, height=4,units="in",res=500,type="cairo")
 p.comut
 dev.off()
 

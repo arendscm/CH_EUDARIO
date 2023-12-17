@@ -262,8 +262,20 @@ dev.off()
 
 
 ##emerging and disappearing clones crossing the 1% VAF threshold
-df.eot_rel %>% filter(vaf_d1 < 0.01&vaf_eot >= 0.01) %>% mutate(class = "emerging")-> df.emerging
-df.eot_rel %>% filter(vaf_d1 >= 0.01&vaf_eot < 0.01) %>% mutate(class = "disappearing")-> df.disappearing
+df.eot_rel %>% filter(vaf_d1 < 0.01&vaf_eot >= 0.01) %>% filter(variable=="relvaf2") %>% mutate(class = "emerging")-> df.emerging
+df.eot_rel %>% filter(vaf_d1 >= 0.01&vaf_eot < 0.01) %>% filter(variable=="relvaf2") %>% mutate(class = "disappearing")-> df.disappearing
+
+##fraction of patients with emerging tp53 clones
+df.eot_rel %>% 
+  filter(Gene == "TP53") %>% 
+  filter(variable == "relvaf2") %>%
+  group_by(Patient.ID)%>%
+  mutate(dyn_max = max(dyn)) %>% 
+  data.frame%>%
+  select(Patient.ID,dyn_max)%>%
+  unique%>%
+  select(dyn_max)%>%
+  table
 
 full_join(df.emerging,df.disappearing) %>%
   mutate(gene = ifelse(is.element(Gene,c("DNMT3A","TET2","TP53","PPM1D","CHEK2")),Gene,"other"))%>%
@@ -282,26 +294,111 @@ png("output/figures/barchart_dynamics.png",width=4, height=4,units="in",res=500,
 p.dynamics
 dev.off()
 
-#### Fitness of PPM1D by brca status (to see whether dynamics unter PARP Inhb. differ depending on BRCA status?) #### 
+#### Fitness of PPM1D/TP53 by brca status (to see whether dynamics unter PARP Inhb. differ depending on BRCA status?) #### 
+load("data/interim/clin.RData")
+
 df.eot_rel %>% 
   filter(variable == "relvaf2") %>% 
-  group_by(Gene)%>%
-  mutate(medfit = median(fitness))%>%
-  data.frame%>%
-  filter(is.element(Gene,c("PPM1D")))%>%
-  left_join(.,id.brca_germline,by = "Patient.ID")%>%
-  mutate(brca_germline=brca1_germline+brca2_germline)%>%
-  ggplot(., aes(x=factor(brca_germline), y=fitness, group=as.factor(brca_germline))) + 
-  geom_violin(trim=TRUE,bw=1)+
+  left_join(.,df.clin %>% dplyr::select(Patient.ID, Arm, HRD_germline, brca_germline))%>%
+  mutate(HSP90 = ifelse(Arm==" A","no","yes"))%>%
+  mutate(HRD = ifelse(HRD_germline == 1, "HRD","no HRD"))%>%
+  mutate(gene_group= ifelse(is.element(Gene,c("PPM1D","TP53")),"TP53/PPM1D",
+                            ifelse(is.element(Gene,c("DNMT3A","TET2")),"DNMT3A/TET2","other")))-> df.eot_rel_arm
+
+
+my_comp = list(c("HRD","no HRD"))
+df.eot_rel_arm %>%
+  filter(gene_group!="other")%>%
+  filter(is.element(Gene,c("PPM1D","TP53")))%>%
+  #filter(is.element(Gene,c("DNMT3A","TET2")))%>%
+  ggplot(., aes(x=factor(HRD), y=fitness, group=HRD, fill=gene_group)) + 
+  geom_violin(trim=TRUE,bw=1,width=0.6, aes(color=gene_group))+
   geom_boxplot(width=0.1, fill="white")+
-  labs(title="",x="Gene", y = "Fitness")+
+  labs(title="",x="HRD status", y = "Clonal fitness")+
+  scale_fill_npg() +
+  scale_color_npg() +
   my_theme() + 
-  theme(axis.title.x = element_blank()) +
+  #theme(axis.title.x = element_blank()) +
   geom_hline(yintercept=0, linetype="dashed",alpha=0.7)+
-  theme(#legend.position = "none",
+  theme(legend.position = "none",
     axis.title.y = element_text(face ="plain"),
     plot.title = element_text(hjust=0,face ="plain"))+
-  stat_compare_means()
+  stat_compare_means(comp = my_comp,
+                     label="p.signif",
+                     vjust=0.001,
+                     label.y = c(10),
+                     tip.length=c(0.005))+
+  theme(axis.line.x = element_blank(),
+        axis.ticks.x = element_blank())-> p.ddr_hrd
+
+png("output/figures/fitness_ddr_hrd.png",width=3, height=4.5,units="in",res=500,type="cairo")
+p.ddr_hrd
+dev.off()
+
+##fitness according to HSP90 exposure
+
+my_comp = list(c(" A"," B"),c(" B"," C"),c(" A"," C"))
+df.eot_rel_arm %>% 
+  filter(gene_group != "other")%>%
+  mutate(gene_group = factor(gene_group, levels = c("TP53/PPM1D","DNMT3A/TET2")))%>%
+  ggplot(., aes(x=factor(Arm), y=fitness, group=as.factor(Arm))) + 
+  geom_violin(trim=TRUE,bw=1,aes(fill=gene_group, color=gene_group))+
+  geom_boxplot(width=0.1, fill="white")+
+  labs(title="",x="Study arm", y = "Clonal fitness")+
+  my_theme() + 
+  scale_fill_npg() +
+  scale_color_npg() +
+  #theme(axis.title.x = element_blank()) +
+  geom_hline(yintercept=0, linetype="dashed",alpha=0.7)+
+  theme(#legend.position = "none",
+    legend.title = element_blank(),
+    axis.title.y = element_text(face ="plain"),
+    plot.title = element_text(hjust=0,face ="plain"))+
+  facet_grid(~gene_group)+
+  stat_compare_means(comp = my_comp,
+                     label="p.signif",
+                     vjust=0.001,
+                     label.y = c(10,11,12),
+                     tip.length=c(0.005,0.005,0.005))+
+  theme(axis.line.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.text = element_text(face="italic"),
+        strip.text.x = element_blank())-> p.fitness_hsp90
+
+png("output/figures/fitness_hsp90.png",width=6, height=4.5,units="in",res=500,type="cairo")
+p.fitness_hsp90
+dev.off()
+
+### clonal fitness in DDR CH by HRD germline status and HSP90 exposure
+
+my_comp = list(c("yes","no"))
+df.eot_rel_arm %>% 
+  #filter(gene_group=="DNMT3A/TET2")%>%
+  filter(gene_group=="TP53/PPM1D")%>%
+  ggplot(., aes(x=factor(HSP90), y=fitness, group=as.factor(HSP90))) + 
+  geom_violin(trim=TRUE,bw=1,aes(fill=gene_group, color=gene_group))+
+  geom_boxplot(width=0.1, fill="white")+
+  labs(title="",x="Ganetespib exposure", y = "Clonal fitness")+
+  my_theme() + 
+  scale_fill_npg() +
+  scale_color_npg() +
+  #theme(axis.title.x = element_blank()) +
+  geom_hline(yintercept=0, linetype="dashed",alpha=0.7)+
+  theme(legend.position = "none",
+    axis.title.y = element_text(face ="plain"),
+    plot.title = element_text(hjust=0,face ="plain"))+
+  facet_grid(~HRD)+
+  stat_compare_means(comp = my_comp,
+                     label="p.signif",
+                     vjust=0.001,
+                     label.y = c(10),
+                     tip.length=c(0.005))+
+  theme(axis.line.x = element_blank(),
+        axis.ticks.x = element_blank())-> p.fitness_hsp90_hrd
+
+png("output/figures/fitness_hsp90_hrd.png",width=3, height=4.5,units="in",res=500,type="cairo")
+p.fitness_hsp90_hrd
+dev.off()
 
 ###exploratory: does vaf_cf/caf_wb ratio correlate with fitness?
 load("data/interim/cf_wb.RData")

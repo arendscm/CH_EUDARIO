@@ -200,8 +200,8 @@ df.clin_tp53 %>%
   table%>%
   data.frame%>%
   ggplot(aes(x=category_max,y=Freq,fill=response_TA2))+geom_bar(stat="identity")+
-  scale_fill_npg(name = "Response to \ncarboplatin")+
-  scale_x_discrete(name = "ctDNA dynamic", labels = c("decreasing","stable","increasing"))+
+  scale_fill_npg(name = "Radiographic \nresponse to \ncarboplatin")+
+  scale_x_discrete(name = "cfDNA dynamic", labels = c("decreasing","stable","increasing"))+
   scale_y_continuous(name="No. of patients")+
   my_theme()+
   theme(axis.text.x = element_text(angle = 90,vjust=0.5),
@@ -230,7 +230,7 @@ df.surv %>%
              ylab = "Progression-free survival",
              xlab = "Time in days",
              ggtheme = my_theme(),
-             legend.title = "ctDNA dynamic",
+             legend.title = "cfDNA dynamic",
              legend.labs = c("decreasing","stable","increasing")
   ) -> p.pfs
 
@@ -255,7 +255,7 @@ df.surv %>%
              ylab = "Overall survival",
              xlab = "Time in days",
              ggtheme = my_theme()+theme(legend.position = "right"),
-             legend.title = "ctDNA dynamic",
+             legend.title = "cfDNA dynamic",
              legend.labs = c("decreasing","stable","increasing")
   ) -> p.os
 
