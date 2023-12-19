@@ -1,13 +1,13 @@
 # ______________________________________________________________________________
-# Ovarian Cancer filtering Script
+# CH in EUDARIO
 #
 # Author: Max & Klara
 #
-# Description: Analysis of longitudinal WB samples
+# Description: Analysis of longitudinal WB samples > clonal fitness analysis
 #
 # Input: seqdata
 #
-# Output: serial sample analysis of cf DNA and wb DNA mutations
+# Output: plots of clonal fitness, emerging/disappearing clones
 # 
 # ______________________________________________________________________________
 ########   Dependencies   #####

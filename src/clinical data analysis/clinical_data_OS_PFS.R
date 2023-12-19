@@ -1,9 +1,9 @@
 # ==============================================================================
-# Ovarian Cancer filtering Script
+# CH in EUDARIO
 #
 # Author: Max & Klara
 #
-# Description: create master tables with clinical data and mutational data
+# Description: Assess impact of CH on PFS and OS
 #
 # Input: preprocessed clinical data and mutational data
 #

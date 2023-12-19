@@ -1,3 +1,16 @@
+# ______________________________________________________________________________
+# CH in EUDARIO
+#
+# Author: Max & Klara
+#
+# Description: Comutation analysis for 103 pts at d1. 
+#
+# Input: seqdata
+#
+# Output: comutation plot
+#
+# ______________________________________________________________________________
+#####  Dependencies   #####
 library(base)
 library(dplyr)
 library(forcats)

@@ -1,9 +1,9 @@
 # ______________________________________________________________________________
-# Ovarian Cancer filtering Script
+# CH in EUDARIO
 #
 # Author: Max & Klara
 #
-# Description: cfDNA Mutation analysis 
+# Description: Comparison of somatic mutations in WB and cfDNA
 #
 # Input: df from data/interim/seqdata.RData
 #
@@ -338,94 +338,6 @@ p.mutprev_all
 png("output/figures/p.cf.mutprev_all.png",width=4, height=6,units="in",res=500,type="cairo")
 p.mutprev_all
 dev.off()
-
-################## Correlation of cfDNA VAF with tumorburden and CA125
-library(GGally)
-full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in% Patmut_all),by="cfID") %>% 
-  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y))%>%
-  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x))%>%
-  filter(TR2.x>9|TR2.y>9)%>%
-  mutate(tag = ifelse(is.na(tag.x),
-                      ifelse(is.na(tag.y),
-                             "not tagged",
-                             as.character(tag.y)),
-                      as.character(tag.x)))%>%
-  mutate(gene_group = ifelse(is.na(gene_group.x),gene_group.y,gene_group.x))%>%
-  mutate(compartment = ifelse(TVAF.x > TVAF.y*10,"cf","wb"))%>%
-  filter(gene_group=="TP53")%>%
-  filter(compartment=="cf")%>%
-  group_by(Patient.ID.x)%>%
-  mutate(maxVAF = max(TVAF.x))%>%
-  data.frame%>%
-  filter(TVAF.x == maxVAF)%>%
-  mutate(Patient.ID = Patient.ID.x,
-         TP53_mut = AAChange.x,
-         VAF_TP53 = log10(TVAF.x))%>%
-  dplyr::select(Patient.ID,TP53_mut,VAF_TP53)%>%
-  left_join(.,df.clin,by=c("Patient.ID"))%>%
-  mutate(logCA=log10(CA125))%>%
-  dplyr::select(logCA,TumorBurden_baseline,VAF_TP53)%>%
-  ggpairs()
-
-
-##Lolliplots for TP53 mutations
-full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in% Patmut_all),by="cfID") %>% 
-  mutate(TVAF.y = ifelse(is.na(TVAF.y),0,TVAF.y))%>%
-  mutate(TVAF.x = ifelse(is.na(TVAF.x),0,TVAF.x))%>%
-  filter(TR2.x>9|TR2.y>9)%>%
-  mutate(tag = ifelse(is.na(tag.x),
-                      ifelse(is.na(tag.y),
-                             "not tagged",
-                             as.character(tag.y)),
-                      as.character(tag.x)))%>%
-  mutate(gene_group = ifelse(is.na(gene_group.x),gene_group.y,gene_group.x))%>%
-  mutate(Gene = ifelse(is.na(Gene.x),Gene.y,Gene.x))%>%
-  mutate(compartment = ifelse(TVAF.x > TVAF.y*5,"cf","wb"))%>%
-  filter(Gene=="TP53")%>%
-  mutate(AAChange = AAChange.x,
-         Sample = Patient.ID.x,
-         Patient.ID = Patient.ID.x,
-         ExonicFunc=ExonicFunc.x,
-         Chr=Chr.x,
-         Start=Start.x,
-         End=End.x,
-         Ref=Ref.x,
-         Alt=Alt.x,
-         TVAF=TVAF.x,
-         tag = tag.x,
-         Func=Func.x,
-         COSMIC=cosmic92_coding.x)%>%
-  dplyr::select(Gene,AAChange,Patient.ID,Func,ExonicFunc,Chr,Start,End,Ref,Alt,TVAF,tag,COSMIC)-> df.tp53
-
-df.tp53_wb <- df.tp53 %>% filter(tag=="true")%>%makeMAF
-df.tp53_cf <- df.tp53 %>% filter(tag=="cf-only")%>%makeMAF
-
-plot.options <- g3Lollipop.theme(theme.name = "cbioportal",
-                                 title.text = "TP53 CH",
-                                 y.axis.label = "# of Mutations")
-
-g3Lollipop(df.tp53_wb,
-           gene.symbol = "TP53",
-           btn.style = "gray", # gray-style chart download buttons
-           plot.options = plot.options,
-           factor.col = "Variant_Type",
-           save.png.btn	= FALSE,
-           save.svg.btn = FALSE,
-           output.filename = "cbioportal_theme")
-
-
-plot.options <- g3Lollipop.theme(theme.name = "cbioportal",
-                                 title.text = "TP53 cfDNA",
-                                 y.axis.label = "# of Mutations")
-
-g3Lollipop(df.tp53_cf,
-           gene.symbol = "TP53",
-           btn.style = "gray", # gray-style chart download buttons
-           plot.options = plot.options,
-           factor.col = "Variant_Type",
-           save.png.btn	= FALSE,
-           save.svg.btn = FALSE,
-           output.filename = "cbioportal_theme")
 
 ##Save RData for further use
 full_join(df.cf%>% filter(Patmut %in% Patmut_all),df.cf_wb %>% filter(Patmut %in% Patmut_all),by="cfID") %>% 

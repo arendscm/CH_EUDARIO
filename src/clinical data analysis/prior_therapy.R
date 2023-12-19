@@ -1,13 +1,11 @@
 # ==============================================================================
-# Ovarian Cancer filtering Script
+# CH in EUDARIO
 #
 # Author: Max & Klara
 #
-# Description: mutational spectrum in patients with and without prior PARPi
+# Description: Assessing impact of prior treatments with presence of CH
 #
 # Input: preprocessed clinical data and mutational data
-#
-# Output: data.frame with clinical and genomic data
 #
 # ==============================================================================
 ########   Dependencies   #####

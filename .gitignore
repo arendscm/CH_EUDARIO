@@ -2,31 +2,16 @@
 .Rhistory
 .RData
 .Ruserdata
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
 data
 output
 EUDARIO.Rproj
-src/SC-Analysis.R
 src/archive
->>>>>>> d430fb28b45c83f173504d5f72d7c773ec60c9f3
-output/Overview_Table.xlsx
-=======
-EUDARIO.Rproj
->>>>>>> 8c4a1c06d71fd61ed07d079c19fe7de6cbc61b1e
-output
+src/clinical data analysis/archive
+.RDataTmp
 qc
 rmarkdown
 data
 README.md
-<<<<<<< HEAD
 src/.gitignore
-test.xlsx
-BRCA_and_HRD_GermlineStatus.xlsx
-test3.xlsx
-test2.xlsx
-test1.xlsx
-=======
 .gitignore
->>>>>>> 8c4a1c06d71fd61ed07d079c19fe7de6cbc61b1e
+

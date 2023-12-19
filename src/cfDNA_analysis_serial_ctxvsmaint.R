@@ -1,13 +1,14 @@
 # ______________________________________________________________________________
-# Longitudinal analysis in cfDNA and WB
+# CH in EUDARIO
 #
 # Author: Max & Klara
 #
-# Description: Analysis of longitudinal data cfDNA samples
+# Description: Analysis of longitudinal data cfDNA samples 
+# comparison of clonal fitness during carboplatin vs PARPi maintenance
 #
 # Input: seqdata
 #
-# Output: serial sample analysis of cf DNA and wb DNA mutations
+# Output: clonal fitness plots
 #
 # ______________________________________________________________________________
 #####  Dependencies   #####
@@ -338,104 +339,4 @@ png("output/figures/p.cf.scatter_CvsM_tp53_ppm1d.png",width=4, height=3,units="i
 p.scatter_CvsM_tp53_ppm1d
 dev.off()
 
-#alternatively with mean and SEM
-##scatterplot growthrate Platinum+PARPi vs PARPI maintenance mean+sem
-full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
-          df.cf_c7eot%>%filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
-          by=c("Patient.ID","Gene","position")) %>%
-  filter(Patient.ID %in% (df.clin %>% filter(Number_ChemotherapyCycles > 5))$Patient.ID)%>%
-  mutate(fitness_platinum = fitness.x, 
-         fitness_maintenance = fitness.y)%>%
-  dplyr::select(-fitness.x,-fitness.y)%>%
-  mutate(Patmut = paste(Patient.ID,position,sep="_"))%>%
-  group_by(Gene)%>%
-  summarise(med.fit.plat = mean(fitness_platinum),
-            med.fit.maint = mean(fitness_maintenance),
-            err.fit.plat = sd(fitness_platinum)/sqrt(n()),
-            err.fit.maint = sd(fitness_maintenance)/sqrt(n()),
-            size=n())%>%
-  data.frame %>%
-  filter(size>7)%>%
-  ggplot(aes(x=med.fit.plat,y=med.fit.maint,color=Gene))+
-  geom_abline(slope=1,intercept=0,linetype="dashed",alpha=0.8)+
-  geom_point(aes(size=size),alpha = 1)+
-  geom_errorbar(aes(ymin=med.fit.maint-err.fit.maint,ymax=med.fit.maint+err.fit.maint),width=0.2)+
-  geom_errorbar(aes(xmin=med.fit.plat-err.fit.plat,xmax=med.fit.plat+err.fit.plat),width=0.2)+
-  scale_color_npg()+
-  scale_x_continuous(name="Mean fitness Chemotherapy",lim=c(-2.5,5))+
-  scale_y_continuous(name="Mean fitness maintenance",lim=c(-2.5,5))+
-  scale_size(name="No. of mutations")+
-  my_theme()+
-  theme(legend.text = element_text(face="italic"))-> p.scatter_CvsM
 
-
-png("output/figures/p.cf.scatter_CvsM.png",width=4.5, height=3,units="in",res=500,type="cairo")
-p.scatter_CvsM
-dev.off()
-
-
-##########HRD genetic background   UNFINISHED!!
-load("data/interim/clin.RData")
-
-full_join(df.cf_c1c7 %>% filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
-          df.cf_c7eot%>%filter(variable=="relvaf2")%>%dplyr::select(Patient.ID,position,Gene,fitness),
-          by=c("Patient.ID","Gene","position")) %>%
-  left_join(.,df.clin %>% dplyr::select(Patient.ID, Arm, HRD_germline, brca_germline))%>%
-  mutate(HSP90 = ifelse(Arm==" A","no","yes"))%>%
-  mutate(HRD = ifelse(HRD_germline == 1, "HRD","no HRD"))%>%
-  mutate(gene_group= ifelse(is.element(Gene,c("PPM1D","TP53")),"TP53/PPM1D",
-                            ifelse(is.element(Gene,c("DNMT3A","TET2")),"DNMT3A/TET2","other")))-> df.plat_vs_parp_hrd
-
-df.plat_vs_parp_hrd%>%
-filter(Patient.ID %in% (df.clin %>% filter(Number_ChemotherapyCycles > 5))$Patient.ID)%>%
-  mutate(fitness_platinum = fitness.x, 
-         fitness_maintenance = fitness.y)%>%
-  dplyr::select(-fitness.x,-fitness.y)%>%
-  mutate(Patmut = paste(Patient.ID,position,sep="_"))%>%
-  group_by(gene_group,Arm,HRD)%>%
-  summarise(med.fit.plat = mean(fitness_platinum),
-            med.fit.maint = mean(fitness_maintenance),
-            err.fit.plat = sd(fitness_platinum)/sqrt(n()),
-            err.fit.maint = sd(fitness_maintenance)/sqrt(n()),
-            size=n())%>%
-  data.frame %>%
-  filter(gene_group=="TP53/PPM1D")%>%
-  ggplot(aes(x=med.fit.plat,y=med.fit.maint,color=gene_group))+
-  geom_abline(slope=1,intercept=0,linetype="dashed",alpha=0.8)+
-  geom_point(aes(size=size),alpha = 1)+
-  geom_errorbar(aes(ymin=med.fit.maint-err.fit.maint,ymax=med.fit.maint+err.fit.maint),width=0.2)+
-  geom_errorbar(aes(xmin=med.fit.plat-err.fit.plat,xmax=med.fit.plat+err.fit.plat),width=0.2)+
-  scale_color_npg()+
-  scale_x_continuous(name="Mean fitness Chemotherapy",lim=c(-2.5,5))+
-  scale_y_continuous(name="Mean fitness maintenance",lim=c(-2.5,5))+
-  scale_size(name="No. of mutations")+
-  my_theme()+
-  theme(legend.text = element_text(face="italic"))-> p.scatter_CvsM
-
-
-my_comp = list(c("HRD","no HRD"))
-df.eot_rel_arm %>%
-  filter(gene_group!="other")%>%
-  filter(is.element(Gene,c("PPM1D","TP53")))%>%
-  #filter(is.element(Gene,c("DNMT3A","TET2")))%>%
-  ggplot(., aes(x=factor(HRD), y=fitness, group=HRD, fill=gene_group)) + 
-  geom_violin(trim=TRUE,bw=1,width=0.6, aes(color=gene_group))+
-  geom_boxplot(width=0.1, fill="white")+
-  labs(title="",x="HRD status", y = "Fitness")+
-  scale_fill_npg() +
-  scale_color_npg() +
-  my_theme() + 
-  theme(axis.title.x = element_blank()) +
-  geom_hline(yintercept=0, linetype="dashed",alpha=0.7)+
-  theme(legend.position = "none",
-        axis.title.y = element_text(face ="plain"),
-        plot.title = element_text(hjust=0,face ="plain"))+
-  stat_compare_means(comp = my_comp,
-                     label="p.signif",
-                     vjust=0.001,
-                     label.y = c(10),
-                     tip.length=c(0.005))-> p.ddr_hrd
-
-png("output/figures/fitness_ddr_hrd.png",width=4, height=4,units="in",res=500,type="cairo")
-p.ddr_hrd
-dev.off()

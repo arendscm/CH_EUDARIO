@@ -1,9 +1,11 @@
 # ==============================================================================
-# Ovarian Cancer filtering Script
+# CH in EUDARIO
 #
 # Author: Max & Klara
 #
 # Description: List of hotspot mutations described in myeloid malignancies
+# taken from Feusier et al. Large-Scale Identification of Clonal Hematopoiesis and Mutations Recurrent in Blood Cancers
+# Blood Cancer Discov. 2021 May;2(3):226-237. doi: 10.1158/2643-3230.BCD-20-0094.
 #
 # Input: df from datapreprocessing, list of hotspot variants data/external/hotspots_mm.csv
 #

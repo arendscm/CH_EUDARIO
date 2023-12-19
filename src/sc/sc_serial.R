@@ -219,4 +219,14 @@ select(df.filtered,Patient.ID)%>%
   unique()->Patient.ID
 
 
+###table of somatic mutations d1
+variables <- c("Patient.ID","Chr","Start","End","Ref","Alt","Gene","Func","ExonicFunc","AAChange","cosmic92_coding","readDepth","TR1","TR2","TVAF")
+df.sc %>% 
+  filter(tag == "true") %>%
+  filter(TVAF >= 0.01) %>%
+  mutate(gene_group = ifelse(Gene %in% typical_ch_genes_without_HRD,"CH",
+                             ifelse(Gene %in% typical_ch_genes,"CH / HR-related",
+                                    ifelse(Gene %in% hrd_genes,"HR-related","other myeloid")))) %>%
+  dplyr::select(variables) -> df.mut_sc
 
+write.xlsx(df.mut_sc, "output/tables/mutations_sc.xlsx",sheetName="SomaticMutations_sc",append = TRUE)

@@ -1,6 +1,6 @@
 
 # ==============================================================================
-# Ovarian Cancer EUDARIO
+# CH in EUDARIO
 #
 # Author: Max & Klara
 #

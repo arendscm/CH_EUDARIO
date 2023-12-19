@@ -1,13 +1,13 @@
 # ==============================================================================
-# Ovarian Cancer filtering Script
+# CH in EUDARIO
 #
 # Author: Max & Klara
 #
-# Description: create master tables with clinical data and mutational data
+# Description: Assess occurence of adverse events during study for CH+ and CH- patients
 #
-# Input: data/extrenal/clindat_modified.xlsx, df.filtered_c1d1
+# Input: preprocessed clinical data
 #
-# Output: data.frame with clinical and genomic data
+# Output: table with AEs 
 #
 # ==============================================================================
 ########   Dependencies   #####

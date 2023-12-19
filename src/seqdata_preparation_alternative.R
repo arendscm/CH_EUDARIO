@@ -1,5 +1,5 @@
 # ==============================================================================
-# Ovarian Cancer filtering Script
+# CH in EUDARIO
 #
 # Author: Max & Klara
 #

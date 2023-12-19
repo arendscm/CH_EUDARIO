@@ -1,13 +1,13 @@
 # ==============================================================================
-# Ovarian Cancer filtering Script
+# CH in EUDARIO
 #
 # Author: Max & Klara
 #
 # Description: Defines BRCA Germline Mutations (BRCA/HRD and their IDs)
 #
-# Input: seqdata
+# Input: seqdata, BRCAExchange database
 #
-# Output: df.brca_germline and BRCA germline IDs/ df.hrd_germline
+# Output: df.brca_germline, id.brca_germline / df.hrd_germline, id.hrd_germline saved in data/interim/brca.RData
 #
 # ==============================================================================
 ########   Dependencies   #####
@@ -49,7 +49,6 @@ df %>%
                  is.element(Func,c("splicing","exonic;splicing")))))%>%## all variants that are classified as pathogenic by expert panel or not yet reviewed, or that have no match in BRCA exchange but are truncating
   filter(!str_detect(BRCA.Exchange_Clinical_Significance_ClinVar,"Benign")|is.na(BRCA.Exchange_Clinical_Significance_ClinVar))-> df.brca_germline
 
-
 ##create list of all patients incl BRCA status
 ids %>% 
   filter(Material=="wb") %>%
@@ -71,7 +70,7 @@ df %>%
   filter(ExonicFunc!= "synonymous SNV") %>%
   filter(Func == "exonic"|is.element(Func,c("splicing","exonic;splicing")))%>%
   filter(AF < 0.01) %>%
-  filter(is.element(ExonicFunc,c("frameshift substitution","stopgain","startloss","."))) -> df.hrd_germline #this list has to be discussed with an expert
+  filter(is.element(ExonicFunc,c("frameshift substitution","stopgain","startloss","."))) -> df.hrd_germline 
 
 
 ids %>% 

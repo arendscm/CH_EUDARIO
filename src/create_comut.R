@@ -1,8 +1,20 @@
+# ______________________________________________________________________________
+# CH in EUDARIO
+#
+# Author: Max & Klara
+#
+# Description: definition of createComut function, along the lines of 
+# Bernard et al. Nature Communications volume 12, Article number: 7244 (2021)
+#
+# Input: seqdata
+#
+# Output: comutation plot
+#
+# ______________________________________________________________________________
+#####  Dependencies   #####
 library(base)
 library(dplyr)
 library(forcats)
-
-
 
 createComut <- function(sub,dis){
 

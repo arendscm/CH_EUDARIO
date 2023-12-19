@@ -1,5 +1,5 @@
 # ______________________________________________________________________________
-# Ovarian Cancer filtering Script
+# CH in EUDARIO
 #
 # Author: Max & Klara
 #
@@ -8,7 +8,7 @@
 # Input: df.filtered from data/interim/seqdata_filtered.RData
 #
 # Output: Excel list of filtered results, plots, ...
-# press ALT-O
+# 
 # ______________________________________________________________________________
 ########   Dependencies and load data  ####
 library(base)
@@ -217,3 +217,14 @@ png("output/figures/mutfreq.png",width=6, height=6,units="in",res=500,type="cair
 p.mutfreq
 dev.off()
 
+##create xlsx for supplements
+variables <- c("Patient.ID","Chr","Start","End","Ref","Alt","Gene","Func","ExonicFunc","AAChange","cosmic92_coding","readDepth","TR1","TR2","TVAF")
+df.filtered.c1d1 %>% 
+  filter(tag == "true") %>%
+  filter(TVAF >= 0.01) %>%
+  mutate(gene_group = ifelse(Gene %in% typical_ch_genes_without_HRD,"CH",
+                             ifelse(Gene %in% typical_ch_genes,"CH / HR-related",
+                                    ifelse(Gene %in% hrd_genes,"HR-related","other myeloid")))) %>%
+  dplyr::select(variables) -> df.mut
+
+write.xlsx(df.mut, "output/tables/mutations_d1.xlsx",sheetName="SomaticMutations_d1")

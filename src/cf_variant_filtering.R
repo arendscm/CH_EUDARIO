@@ -1,13 +1,13 @@
 # ==============================================================================
-# Ovarian Cancer filtering Script
+# CH in EUDARIO
 #
 # Author: Max & Klara
 #
-# Description: from variantcalls to excel list of filtered results
+# Description: filtering variant calls in cfDNA
 #
 # Input: seqdata
 #
-# Output: Excel list of filtered results
+# Output: filtered variant list saved in data/interim/seqdata_filtered_cf.RData
 #
 # ==============================================================================
 ########   Dependencies   #####
