@@ -3,15 +3,11 @@
 .RData
 .Ruserdata
 data
-output
 EUDARIO.Rproj
 src/archive
 src/clinical data analysis/archive
 .RDataTmp
-qc
-rmarkdown
 data
 README.md
-src/.gitignore
 .gitignore
-
+output
